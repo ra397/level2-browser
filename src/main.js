@@ -3,6 +3,7 @@ import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import {polarToCartesian} from "./decoder/polarToCartesian.js";
 import {ImgGenerator} from "./displayer/ImgGenerator.js";
 import {customOverlay} from "./displayer/customOverlay.js";
+import {MarkerCollection} from "./displayer/markerCollection.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     globalThis.map = new google.maps.Map(document.getElementById("map"), {
@@ -90,16 +91,19 @@ console.timeEnd("Generating image");
 
 const bounds = {
     "sw": {
-        "lat": 39.42100608729517,
-            "lng": -93.43410232792675
+        "lat": 37.619972903379335,
+        "lng": -96.13668664753227
     },
     "ne": {
-        "lat": 43.755004878284836,
-            "lng": -87.56683969618199
+        "lat": 45.34999584634914,
+        "lng": -84.3789660762029
     }
 };
 console.time("Displaying image on map");
 const overlay = customOverlay(imgUrl, bounds, map);
+overlay.setOpacity(0.5);
 console.timeEnd("Displaying image on map");
 
-console.log(radar.sweeps)
+const markers = new MarkerCollection(map);
+markers.add(41.611568075614784, -90.58089555033914);
+markers.setSize(4);
