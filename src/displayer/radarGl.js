@@ -540,6 +540,7 @@ class RadarMapOverlay extends google.maps.OverlayView {
 
         // Create canvas element
         this.canvas = document.createElement('canvas');
+        this.canvas.id = "radarMapOverlay";
         this.canvas.style.position = 'absolute';
 
         // Attach to map
