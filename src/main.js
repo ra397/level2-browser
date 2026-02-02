@@ -3,6 +3,9 @@ import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import {MarkerCollection} from "./displayer/markerCollection.js";
 import {buildColorLUT, RadarMapOverlay, REF_PALETTE} from "./displayer/radarGl.js";
 
+const radarPos = {lat: 41.611568075614784, lng: -90.58089555033914};
+const radarRange = 460e3;
+
 document.addEventListener('DOMContentLoaded', () => {
     globalThis.map = new google.maps.Map(document.getElementById("map"), {
         center: {lat: 39.5, lng: -98.35},
@@ -10,6 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
         minZoom: 4,
         maxZoom: 12,
         clickableIcons: false,
+    });
+    new google.maps.Circle({
+        strokeColor: "#FF0000",
+        strokeOpacity: 0.8,
+        strokeWeight: 1,
+        fillColor: "#FF0000",
+        fillOpacity: 0,
+        map: map,
+        center: radarPos,
+        radius: radarRange,
     });
 });
 
@@ -30,14 +43,17 @@ console.timeEnd("Fetching data");
 
 console.time("Decoding data");
 const radar = new NexradLevel2(rawData);
-const radarData = radar.getData(0, "REF");
+
+const sweepIndex = radar.sweeps[0].index;
+
+const radarData = radar.getData(sweepIndex, "REF");
 console.timeEnd("Decoding data");
 
 console.time("Displaying data");
 const radarOverlay = new RadarMapOverlay(map, (overlay) => {
     const colors = buildColorLUT(REF_PALETTE, -35, 95);
     overlay.setColors(colors);
-    overlay.setRadarPosition(41.611568075614784, -90.58089555033914);
+    overlay.setRadarPosition(radarPos.lat, radarPos.lng, radar.sweeps[sweepIndex].elevation);
 
     overlay.loadData(
         radarData.azimuths,
@@ -47,8 +63,9 @@ const radarOverlay = new RadarMapOverlay(map, (overlay) => {
     );
 });
 console.timeEnd("Displaying data");
-radarOverlay.setOpacity(0.5);
+radarOverlay.setOpacity(1);
 
 const markers = new MarkerCollection(map);
-markers.add(41.611568075614784, -90.58089555033914);
+markers.add(radarPos.lat, radarPos.lng);
 markers.setSize(4);
+markers.setColor('red');

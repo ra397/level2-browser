@@ -165,29 +165,43 @@ in float a_azimuth;
 in float a_distance;
 in float a_colorIndex;
 
-uniform vec2 u_origin;      // Radar position in Web Mercator (EPSG:3857) coords
 uniform vec2 u_boundsMin;
 uniform vec2 u_boundsMax;
 uniform float u_latRad;     // Radar latitude in radians
-uniform float u_lngRad;     // Radar longitude in radians (NEW - need to pass this)
+uniform float u_lngRad;     // Radar longitude in radians
+uniform float u_elevRad;    // Radar beam elevation angle in radians
 
 flat out int v_colorIndex;
 
-const float EARTH_RADIUS = 6378137.0;
+const float EARTH_RADIUS = 6378137.0;  // meters
+const float K_FACTOR = 4.0 / 3.0;      // 4/3 Earth radius for refraction
 const float PI = 3.14159265359;
 
 void main() {
-    // Distance in radians (angular distance on sphere)
-    float angularDist = a_distance / EARTH_RADIUS;
+    // Effective Earth radius (4/3 model for atmospheric refraction)
+    float kRe = K_FACTOR * EARTH_RADIUS;
     
-    // Azimuth angle (a_azimuth is already in math convention: 0=East, CCW)
+    // a_distance is slant range along the beam (meters)
+    // Convert to ground distance using WSR-88D geometry
+    float R = a_distance;
+    float cosElev = cos(u_elevRad);
+    float sinElev = sin(u_elevRad);
+    
+    // Central angle phi using the 4/3 Earth model
+    float phi = atan(R * cosElev, kRe + R * sinElev);
+    
+    // Ground distance (arc length on effective Earth)
+    float groundDist = kRe * phi;
+    
+    // Now use ground distance for spherical destination calculation
+    // Angular distance on actual Earth sphere
+    float angularDist = groundDist / EARTH_RADIUS;
+    
+    // Azimuth angle (a_azimuth is in math convention: 0=East, CCW)
     // Convert to bearing: 0=North, clockwise
     float bearing = radians(90.0 - a_azimuth);
     
     // Spherical law of cosines to find destination point
-    // Given: start point (lat1, lng1), bearing, angular distance
-    // Find: end point (lat2, lng2)
-    
     float sinLat1 = sin(u_latRad);
     float cosLat1 = cos(u_latRad);
     float sinDist = sin(angularDist);
@@ -334,12 +348,12 @@ class RadarRenderer {
 
         // Store uniform locations for later use
         this.uniforms = {
-            origin: this.gl.getUniformLocation(this.program, 'u_origin'),
             boundsMin: this.gl.getUniformLocation(this.program, 'u_boundsMin'),
             boundsMax: this.gl.getUniformLocation(this.program, 'u_boundsMax'),
             colors: this.gl.getUniformLocation(this.program, 'u_colors'),
             latRad: this.gl.getUniformLocation(this.program, 'u_latRad'),
-            lngRad: this.gl.getUniformLocation(this.program, 'u_lngRad')
+            lngRad: this.gl.getUniformLocation(this.program, 'u_lngRad'),
+            elevRad: this.gl.getUniformLocation(this.program, 'u_elevRad')
         };
 
         // Initialize state
@@ -362,15 +376,15 @@ class RadarRenderer {
      * Set radar position
      * @param {number} lat - Latitude in degrees
      * @param {number} lng - Longitude in degrees
+     * @param elevation_angle
      */
-    setRadarPosition(lat, lng) {
-        this.radarOrigin = latLngToMercator(lat, lng);
-        this.gl.uniform2f(this.uniforms.origin, this.radarOrigin.x, this.radarOrigin.y);
-
+    setRadarPosition(lat, lng, elevation_angle) {
         const latRad = lat * Math.PI / 180;
         const lngRad = lng * Math.PI / 180;
+        const elevRad = elevation_angle * Math.PI / 180;
         this.gl.uniform1f(this.uniforms.latRad, latRad);
         this.gl.uniform1f(this.uniforms.lngRad, lngRad);
+        this.gl.uniform1f(this.uniforms.elevRad, elevRad);
     }
 
     /**
@@ -395,7 +409,6 @@ class RadarRenderer {
      */
     loadData(azimuths, ranges, data, options = {}) {
         const {
-            elevation = 0.5,      // Default elevation angle
             minValue = -10,       // Min reflectivity for color mapping
             maxValue = 80,        // Max reflectivity for color mapping
             beamWidth = 0.5       // Azimuthal resolution
@@ -418,8 +431,6 @@ class RadarRenderer {
         const vertexDistances = new Float32Array(numVertices);
         const vertexColors = new Float32Array(numVertices);
 
-        const elevationCos = Math.cos(elevation * Math.PI / 180);
-
         let vertexIndex = 0;
         for (let a = 0; a <= numAzimuths; a++) {
             // Get azimuth angle (wrap around for last vertex)
@@ -430,7 +441,7 @@ class RadarRenderer {
             for (let r = 0; r <= numRanges; r++) {
                 // Get range in km, convert to meters, apply elevation correction
                 const rangeKm = ranges[Math.min(r, numRanges - 1)];
-                const distanceMeters = rangeKm * 1000 * elevationCos;
+                const distanceMeters = rangeKm * 1000;
 
                 vertexAzimuths[vertexIndex] = mathAngle;
                 vertexDistances[vertexIndex] = distanceMeters;
@@ -654,9 +665,9 @@ class RadarMapOverlay extends google.maps.OverlayView {
     /**
      * Set radar position
      */
-    setRadarPosition(lat, lng) {
+    setRadarPosition(lat, lng, elevation_angle = 0.5) {
         if (this.renderer) {
-            this.renderer.setRadarPosition(lat, lng);
+            this.renderer.setRadarPosition(lat, lng, elevation_angle);
         }
     }
 
