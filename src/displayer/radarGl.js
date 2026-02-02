@@ -168,34 +168,48 @@ in float a_colorIndex;
 uniform vec2 u_origin;      // Radar position in Web Mercator (EPSG:3857) coords
 uniform vec2 u_boundsMin;
 uniform vec2 u_boundsMax;
-uniform float u_latRad;     // Radar latitude in radians (for Mercator correction)
+uniform float u_latRad;     // Radar latitude in radians
+uniform float u_lngRad;     // Radar longitude in radians (NEW - need to pass this)
 
 flat out int v_colorIndex;
 
-// Earth radius in meters (WGS84 semi-major axis)
 const float EARTH_RADIUS = 6378137.0;
+const float PI = 3.14159265359;
 
 void main() {
-    // Convert polar to local Cartesian offset (meters)
-    float angleRad = radians(a_azimuth);
-    float dx_meters = cos(angleRad) * a_distance;  // East offset
-    float dy_meters = sin(angleRad) * a_distance;  // North offset
+    // Distance in radians (angular distance on sphere)
+    float angularDist = a_distance / EARTH_RADIUS;
     
-    // Convert meter offsets to Web Mercator coordinate offsets
-    // In Web Mercator, X is simply meters at the equator
-    // But Y (and effective X scale) varies with latitude by 1/cos(lat)
-    float mercatorScale = 1.0 / cos(u_latRad);
+    // Azimuth angle (a_azimuth is already in math convention: 0=East, CCW)
+    // Convert to bearing: 0=North, clockwise
+    float bearing = radians(90.0 - a_azimuth);
     
-    float dx_mercator = dx_meters * mercatorScale;
-    float dy_mercator = dy_meters * mercatorScale;
+    // Spherical law of cosines to find destination point
+    // Given: start point (lat1, lng1), bearing, angular distance
+    // Find: end point (lat2, lng2)
     
-    // Apply offset to origin
-    float x = u_origin.x + dx_mercator;
-    float y = u_origin.y + dy_mercator;
+    float sinLat1 = sin(u_latRad);
+    float cosLat1 = cos(u_latRad);
+    float sinDist = sin(angularDist);
+    float cosDist = cos(angularDist);
+    
+    // Calculate destination latitude
+    float sinLat2 = sinLat1 * cosDist + cosLat1 * sinDist * cos(bearing);
+    float vertexLatRad = asin(sinLat2);
+    
+    // Calculate destination longitude
+    float y = sin(bearing) * sinDist * cosLat1;
+    float x = cosDist - sinLat1 * sinLat2;
+    float deltaLng = atan(y, x);
+    float vertexLngRad = u_lngRad + deltaLng;
+    
+    // Convert vertex lat/lng to Web Mercator
+    float vertexMercX = EARTH_RADIUS * vertexLngRad;
+    float vertexMercY = EARTH_RADIUS * log(tan(PI / 4.0 + vertexLatRad / 2.0));
     
     // Convert to NDC
-    float ndc_x = 2.0 * (x - u_boundsMin.x) / (u_boundsMax.x - u_boundsMin.x) - 1.0;
-    float ndc_y = 2.0 * (y - u_boundsMin.y) / (u_boundsMax.y - u_boundsMin.y) - 1.0;
+    float ndc_x = 2.0 * (vertexMercX - u_boundsMin.x) / (u_boundsMax.x - u_boundsMin.x) - 1.0;
+    float ndc_y = 2.0 * (vertexMercY - u_boundsMin.y) / (u_boundsMax.y - u_boundsMin.y) - 1.0;
     
     gl_Position = vec4(ndc_x, ndc_y, 0.0, 1.0);
     v_colorIndex = int(a_colorIndex);
@@ -324,7 +338,8 @@ class RadarRenderer {
             boundsMin: this.gl.getUniformLocation(this.program, 'u_boundsMin'),
             boundsMax: this.gl.getUniformLocation(this.program, 'u_boundsMax'),
             colors: this.gl.getUniformLocation(this.program, 'u_colors'),
-            latRad: this.gl.getUniformLocation(this.program, 'u_latRad')
+            latRad: this.gl.getUniformLocation(this.program, 'u_latRad'),
+            lngRad: this.gl.getUniformLocation(this.program, 'u_lngRad')
         };
 
         // Initialize state
@@ -353,7 +368,9 @@ class RadarRenderer {
         this.gl.uniform2f(this.uniforms.origin, this.radarOrigin.x, this.radarOrigin.y);
 
         const latRad = lat * Math.PI / 180;
+        const lngRad = lng * Math.PI / 180;
         this.gl.uniform1f(this.uniforms.latRad, latRad);
+        this.gl.uniform1f(this.uniforms.lngRad, lngRad);
     }
 
     /**
