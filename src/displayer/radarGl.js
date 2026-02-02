@@ -161,26 +161,39 @@ function metAzimuthToMathAngle(azimuth) {
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
 
-// Per-vertex inputs
-in float a_azimuth;      // Angle in degrees (math convention)
-in float a_distance;     // Distance from radar in meters
-in float a_colorIndex;   // Index into color palette (0-255)
+in float a_azimuth;
+in float a_distance;
+in float a_colorIndex;
 
-// Uniform values (same for all vertices)
-uniform vec2 u_origin;      // Radar position in Mercator coords
-uniform vec2 u_boundsMin;   // Map viewport min corner (Mercator)
-uniform vec2 u_boundsMax;   // Map viewport max corner (Mercator)
+uniform vec2 u_origin;      // Radar position in Web Mercator (EPSG:3857) coords
+uniform vec2 u_boundsMin;
+uniform vec2 u_boundsMax;
+uniform float u_latRad;     // Radar latitude in radians (for Mercator correction)
 
-// Output to fragment shader
 flat out int v_colorIndex;
 
+// Earth radius in meters (WGS84 semi-major axis)
+const float EARTH_RADIUS = 6378137.0;
+
 void main() {
-    // Convert polar (azimuth, distance) to Cartesian (x, y)
+    // Convert polar to local Cartesian offset (meters)
     float angleRad = radians(a_azimuth);
-    float x = cos(angleRad) * a_distance + u_origin.x;
-    float y = sin(angleRad) * a_distance + u_origin.y;
+    float dx_meters = cos(angleRad) * a_distance;  // East offset
+    float dy_meters = sin(angleRad) * a_distance;  // North offset
     
-    // Convert Mercator coords to Normalized Device Coordinates (-1 to 1)
+    // Convert meter offsets to Web Mercator coordinate offsets
+    // In Web Mercator, X is simply meters at the equator
+    // But Y (and effective X scale) varies with latitude by 1/cos(lat)
+    float mercatorScale = 1.0 / cos(u_latRad);
+    
+    float dx_mercator = dx_meters * mercatorScale;
+    float dy_mercator = dy_meters * mercatorScale;
+    
+    // Apply offset to origin
+    float x = u_origin.x + dx_mercator;
+    float y = u_origin.y + dy_mercator;
+    
+    // Convert to NDC
     float ndc_x = 2.0 * (x - u_boundsMin.x) / (u_boundsMax.x - u_boundsMin.x) - 1.0;
     float ndc_y = 2.0 * (y - u_boundsMin.y) / (u_boundsMax.y - u_boundsMin.y) - 1.0;
     
@@ -310,7 +323,8 @@ class RadarRenderer {
             origin: this.gl.getUniformLocation(this.program, 'u_origin'),
             boundsMin: this.gl.getUniformLocation(this.program, 'u_boundsMin'),
             boundsMax: this.gl.getUniformLocation(this.program, 'u_boundsMax'),
-            colors: this.gl.getUniformLocation(this.program, 'u_colors')
+            colors: this.gl.getUniformLocation(this.program, 'u_colors'),
+            latRad: this.gl.getUniformLocation(this.program, 'u_latRad')
         };
 
         // Initialize state
@@ -337,6 +351,9 @@ class RadarRenderer {
     setRadarPosition(lat, lng) {
         this.radarOrigin = latLngToMercator(lat, lng);
         this.gl.uniform2f(this.uniforms.origin, this.radarOrigin.x, this.radarOrigin.y);
+
+        const latRad = lat * Math.PI / 180;
+        this.gl.uniform1f(this.uniforms.latRad, latRad);
     }
 
     /**
