@@ -1,0 +1,54 @@
+#color-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 600px;
+    position: absolute;
+    top: 28ch;
+    left: 10px;
+    backdrop-filter: blur(10px);
+    background: rgba(235, 232, 232, 0.6);
+    padding: 4px;
+    border-radius: 4px;
+}
+
+#color-legend.hidden {
+    display: none;
+}
+
+.legend-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #333;
+}
+
+.legend-content {
+    display: flex;
+    gap: 8px;
+    height: 100%;
+}
+
+.legend-bar {
+    width: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.legend-segment {
+    flex: 1;
+}
+
+.legend-labels {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+}
+
+.legend-label {
+    font-size: 11px;
+    color: #333;
+    line-height: 1;
+}

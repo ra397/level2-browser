@@ -8,6 +8,27 @@
 </head>
 <body>
     <div id="map"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div id="menu" style="position:absolute;top:10px;left:10px;background:white;padding:10px;z-index:1000;">
+        <div>
+            <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" style="width:300px;">
+            <button id="decodeBtn">Decode</button>
+        </div>
+        <div id="sweepContainer" style="display:none;">
+            <b>Sweeps:</b>
+            <div id="sweepList"></div>
+        </div>
+        <div id="momentContainer" style="display:none;">
+            <b>Moments:</b>
+            <div id="momentList"></div>
+        </div>
+    </div>
+    <div id="color-legend" class="hidden">
+        <span class="legend-title"></span>
+        <div class="legend-content">
+            <div class="legend-bar"></div>
+            <div class="legend-labels"></div>
+        </div>
+    </div>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>
