@@ -4,7 +4,7 @@ import './components/menu.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
 import {
-    buildColorLUT, RadarMapOverlay,
+    buildColorLUT, getRadarMapOverlay,
     REF_PALETTE, RHO_PALETTE, CFP_PALETTE, PHI_PALETTE,
     SW_PALETTE, VEL_PALETTE, ZDR_PALETTE
 } from "./displayer/radarGl.js";
@@ -57,6 +57,7 @@ function visualize(station) {
     const config = PRODUCT_CONFIG[moment] || PRODUCT_CONFIG['REF'];
     const radarData = radar.getData(sweepIndex, moment);
 
+    const RadarMapOverlay = getRadarMapOverlay();
     radarOverlay = new RadarMapOverlay(map, (overlay) => {
         const colors = buildColorLUT(config.palette, config.minValue, config.maxValue);
         overlay.setColors(colors);

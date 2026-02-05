@@ -12,6 +12,7 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
     "buffer": "^6.0.3",
     "seek-bzip": "^2.0.0"
   }

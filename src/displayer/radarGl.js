@@ -669,133 +669,141 @@ class RadarRenderer {
  *   overlay.setRadarPosition(radarLat, radarLng);
  *   overlay.loadData(azimuths, ranges, data, options);
  */
-class RadarMapOverlay extends google.maps.OverlayView {
-    constructor(map, onReady = null) {
-        super();
-        this.map = map;
-        this.onReady = onReady;
-        this.opacity = 1;
+let RadarMapOverlay = null;
 
-        // Create canvas element
-        this.canvas = document.createElement('canvas');
-        this.canvas.id = "radarMapOverlay";
-        this.canvas.style.position = 'absolute';
+function getRadarMapOverlay() {
+    if (RadarMapOverlay) return RadarMapOverlay;
 
-        // Attach to map
-        this.setMap(map);
-    }
+    RadarMapOverlay = class extends google.maps.OverlayView {
+        constructor(map, onReady = null) {
+            super();
+            this.map = map;
+            this.onReady = onReady;
+            this.opacity = 1;
 
-    /**
-     * Called when overlay is added to map
-     */
-    onAdd() {
-        // Add canvas to map's overlay layer
-        const panes = this.getPanes();
-        panes.overlayLayer.appendChild(this.canvas);
+            // Create canvas element
+            this.canvas = document.createElement('canvas');
+            this.canvas.id = "radarMapOverlay";
+            this.canvas.style.position = 'absolute';
 
-        // Create renderer
-        this.renderer = new RadarRenderer(this.canvas);
-
-        // Set default colors
-        const defaultColors = buildColorLUT(REF_PALETTE, -10, 80);
-        this.renderer.setColors(defaultColors);
-
-        // Notify that we're ready
-        if (this.onReady) {
-            this.onReady(this);
-        }
-    }
-
-    /**
-     * Called whenever map view changes (pan, zoom)
-     */
-    draw() {
-        if (!this.renderer) return;
-
-        const projection = this.getProjection();
-        const bounds = this.map.getBounds();
-        if (!projection || !bounds) return;
-
-        // Get pixel coordinates of map corners
-        const sw = projection.fromLatLngToDivPixel(bounds.getSouthWest());
-        const ne = projection.fromLatLngToDivPixel(bounds.getNorthEast());
-
-        // Size and position canvas to cover map
-        const width = Math.abs(ne.x - sw.x);
-        const height = Math.abs(sw.y - ne.y);
-
-        this.canvas.style.left = `${sw.x}px`;
-        this.canvas.style.top = `${ne.y}px`;
-        this.canvas.style.opacity = this.opacity;
-
-        // Update canvas size if needed
-        if (this.canvas.width !== width || this.canvas.height !== height) {
-            this.renderer.resize(width, height);
+            // Attach to map
+            this.setMap(map);
         }
 
-        // Convert map bounds to Mercator coordinates
-        const mercSW = latLngToMercator(
-            bounds.getSouthWest().lat(),
-            bounds.getSouthWest().lng()
-        );
-        const mercNE = latLngToMercator(
-            bounds.getNorthEast().lat(),
-            bounds.getNorthEast().lng()
-        );
+        /**
+         * Called when overlay is added to map
+         */
+        onAdd() {
+            // Add canvas to map's overlay layer
+            const panes = this.getPanes();
+            panes.overlayLayer.appendChild(this.canvas);
 
-        // Update renderer and redraw
-        this.renderer.setViewBounds(mercSW.x, mercSW.y, mercNE.x, mercNE.y);
-        this.renderer.draw();
-    }
+            // Create renderer
+            this.renderer = new RadarRenderer(this.canvas);
 
-    /**
-     * Called when overlay is removed
-     */
-    onRemove() {
-        this.canvas.remove();
-    }
+            // Set default colors
+            const defaultColors = buildColorLUT(REF_PALETTE, -10, 80);
+            this.renderer.setColors(defaultColors);
 
-    /**
-     * Set radar position
-     */
-    setRadarPosition(lat, lng, elevation_angle = 0.5) {
-        if (this.renderer) {
-            this.renderer.setRadarPosition(lat, lng, elevation_angle);
+            // Notify that we're ready
+            if (this.onReady) {
+                this.onReady(this);
+            }
         }
-    }
 
-    /**
-     * Load radar data
-     */
-    loadData(azimuths, ranges, data, options = {}) {
-        if (this.renderer) {
-            this.renderer.loadData(azimuths, ranges, data, options);
-            this.draw();
+        /**
+         * Called whenever map view changes (pan, zoom)
+         */
+        draw() {
+            if (!this.renderer) return;
+
+            const projection = this.getProjection();
+            const bounds = this.map.getBounds();
+            if (!projection || !bounds) return;
+
+            // Get pixel coordinates of map corners
+            const sw = projection.fromLatLngToDivPixel(bounds.getSouthWest());
+            const ne = projection.fromLatLngToDivPixel(bounds.getNorthEast());
+
+            // Size and position canvas to cover map
+            const width = Math.abs(ne.x - sw.x);
+            const height = Math.abs(sw.y - ne.y);
+
+            this.canvas.style.left = `${sw.x}px`;
+            this.canvas.style.top = `${ne.y}px`;
+            this.canvas.style.opacity = this.opacity;
+
+            // Update canvas size if needed
+            if (this.canvas.width !== width || this.canvas.height !== height) {
+                this.renderer.resize(width, height);
+            }
+
+            // Convert map bounds to Mercator coordinates
+            const mercSW = latLngToMercator(
+                bounds.getSouthWest().lat(),
+                bounds.getSouthWest().lng()
+            );
+            const mercNE = latLngToMercator(
+                bounds.getNorthEast().lat(),
+                bounds.getNorthEast().lng()
+            );
+
+            // Update renderer and redraw
+            this.renderer.setViewBounds(mercSW.x, mercSW.y, mercNE.x, mercNE.y);
+            this.renderer.draw();
         }
-    }
 
-    /**
-     * Set overlay opacity (0-1)
-     */
-    setOpacity(opacity) {
-        this.opacity = Math.max(0, Math.min(1, opacity));
-        this.canvas.style.opacity = this.opacity;
-    }
-
-    /**
-     * Set custom color palette
-     */
-    setColors(colors) {
-        if (this.renderer) {
-            this.renderer.setColors(colors);
-            this.draw();
+        /**
+         * Called when overlay is removed
+         */
+        onRemove() {
+            this.canvas.remove();
         }
-    }
+
+        /**
+         * Set radar position
+         */
+        setRadarPosition(lat, lng, elevation_angle = 0.5) {
+            if (this.renderer) {
+                this.renderer.setRadarPosition(lat, lng, elevation_angle);
+            }
+        }
+
+        /**
+         * Load radar data
+         */
+        loadData(azimuths, ranges, data, options = {}) {
+            if (this.renderer) {
+                this.renderer.loadData(azimuths, ranges, data, options);
+                this.draw();
+            }
+        }
+
+        /**
+         * Set overlay opacity (0-1)
+         */
+        setOpacity(opacity) {
+            this.opacity = Math.max(0, Math.min(1, opacity));
+            this.canvas.style.opacity = this.opacity;
+        }
+
+        /**
+         * Set custom color palette
+         */
+        setColors(colors) {
+            if (this.renderer) {
+                this.renderer.setColors(colors);
+                this.draw();
+            }
+        }
+    };
+
+    return RadarMapOverlay;
 }
 
 export {
     RadarRenderer,
-    RadarMapOverlay,
+    getRadarMapOverlay,
     buildColorLUT,
     REF_PALETTE,
     VEL_PALETTE,
