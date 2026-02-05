@@ -8,20 +8,26 @@
 </head>
 <body>
     <div id="map"></div>
-    <div id="menu" style="position:absolute;top:10px;left:10px;background:white;padding:10px;z-index:1000;">
-        <div>
-            <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" style="width:300px;">
-            <button id="decodeBtn">Decode</button>
+
+    <div id="menu">
+        <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" spellcheck="false">
+        <button class="submit-btn" id="decodeBtn">Decode</button>
+
+        <div id="sweepContainer" class="section-container" style="display: none;">
+            <div class="section-header">
+                <span>Sweeps</span>
+            </div>
+            <div id="sweepList" class="radio-grid"></div>
         </div>
-        <div id="sweepContainer" style="display:none;">
-            <b>Sweeps:</b>
-            <div id="sweepList"></div>
-        </div>
-        <div id="momentContainer" style="display:none;">
-            <b>Moments:</b>
-            <div id="momentList"></div>
+
+        <div id="momentContainer" class="section-container" style="display: none;">
+            <div class="section-header">
+                <span>Moments</span>
+            </div>
+            <div id="momentList" class="radio-row"></div>
         </div>
     </div>
+
     <div id="color-legend" class="hidden">
         <span class="legend-title"></span>
         <div class="legend-content">
@@ -29,6 +35,7 @@
             <div class="legend-labels"></div>
         </div>
     </div>
-<script type="module" src="/src/main.js"></script>
+
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

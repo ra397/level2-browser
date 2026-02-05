@@ -1,6 +1,6 @@
 import './style.css';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
-import {MarkerCollection} from "./displayer/markerCollection.js";
+import "./components/markers.js";
 import {
     buildColorLUT, CFP_PALETTE, PHI_PALETTE,
     RadarMapOverlay,
@@ -9,7 +9,7 @@ import {
     VEL_PALETTE,
     ZDR_PALETTE
 } from "./displayer/radarGl.js";
-import {updateLegend, hideLegend} from "./displayer/legend.js";
+import {updateLegend, hideLegend} from "./components/legend.js";
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },
@@ -21,17 +21,18 @@ const PRODUCT_CONFIG = {
     CFP: { palette: CFP_PALETTE, minValue: 0,   maxValue: 50, units: 'dB' },
 };
 
-let nexradStations = [];
 let radar = null;
 let radarOverlay = null;
-let markers = null;
 let currentSweepIndex = 0;
 let currentMoment = 'REF';
 
 // Fetch station metadata once at startup
 fetch('/data/nexrad.json')
     .then(r => r.json())
-    .then(data => { nexradStations = data; });
+    .then(data => {
+        globalThis.nexradStations = data;
+        window.dispatchEvent(new CustomEvent('nexradStationsReady', { detail: data }));
+    });
 
 function parseRadarId(url) {
     const match = url.match(/\/([A-Z]{4})\//);
@@ -72,11 +73,6 @@ function visualize(station) {
     radarOverlay.setOpacity(1);
 
     updateLegend(config.palette, config.units, config.labelStep || 1);
-
-    markers.clear();
-    markers.add(station.lat, station.lng);
-    markers.setSize(4);
-    markers.setColor('red');
 }
 
 function populateSweeps() {
@@ -126,8 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         maxZoom: 12,
         clickableIcons: false,
     });
-
-    markers = new MarkerCollection(map);
+    window.dispatchEvent(new CustomEvent('mapReady'));
 
     const decodeBtn = document.getElementById('decodeBtn');
     const urlInput = document.getElementById('urlInput');

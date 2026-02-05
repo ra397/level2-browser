@@ -1,10 +1,103 @@
+:root {
+    --background-color: #f5fefd;
+    --font-color: #1c1c1e;
+    --blue: #007AFF;
+}
+
 body {
     padding: 0;
     margin: 0;
     overflow: hidden;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--font-color);
 }
 
 #map {
     width: 100vw;
     height: 100vh;
+}
+
+#menu {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+
+    width: 40ch;
+
+    background: var(--background-color);
+
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 15px;
+    padding: 1.5ch;
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+#urlInput {
+    background: #F2F2F7;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+#urlInput:focus {
+    background: #fff;
+    border-color: #ccc;
+    box-shadow: 0 0 0 3px rgba(204, 204, 204, 0.15);
+}
+
+.submit-btn {
+    all: unset;
+
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 5px 20px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.submit-btn:hover {
+    opacity: 0.9;
+}
+
+.submit-btn:active {
+    transform: scale(0.97);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    color: #8E8E93;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.radio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns */
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.radio-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
