@@ -1,3 +1,5 @@
+import {latLngToRadarIndex} from "../displayer/radarGl.js";
+
 let TooltipOverlay = null;
 
 function getTooltipOverlay() {
@@ -29,7 +31,10 @@ function getTooltipOverlay() {
             const closeBtn = document.createElement('span');
             closeBtn.className = 'product-tooltip-close';
             closeBtn.textContent = '×';
-            closeBtn.addEventListener('click', () => this.#onClose?.());
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.#onClose?.();
+            });
 
             this.#div.appendChild(content);
             this.#div.appendChild(closeBtn);
@@ -161,10 +166,27 @@ export const tooltipManager = {
         }
     },
 
-    updateAllTooltips(radarData, units) {
+    updateAllTooltips(radarData, units, stationLat, stationLng) {
         const numRanges = radarData.ranges.length;
+
         openTooltips.forEach((tooltip, key) => {
-            const dataIndex = tooltip.azimuthIndex * numRanges + tooltip.rangeIndex;
+            // Recalculate indices from lat/lng for new sweep data
+            const indices = latLngToRadarIndex(
+                tooltip.lat, tooltip.lng,
+                stationLat, stationLng,
+                radarData.azimuths, radarData.ranges
+            );
+
+            if (!indices) {
+                tooltip.overlay.setContent('Out of range');
+                return;
+            }
+
+            // Update stored indices to match new data
+            tooltip.azimuthIndex = indices.azimuthIndex;
+            tooltip.rangeIndex = indices.rangeIndex;
+
+            const dataIndex = indices.azimuthIndex * numRanges + indices.rangeIndex;
             const value = radarData.data[dataIndex];
             tooltip.overlay.setContent(formatValue(value, units));
         });

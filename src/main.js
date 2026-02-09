@@ -65,7 +65,7 @@ function visualize(station) {
     currentStation = station;
 
     // update all tooltips
-    tooltipManager.updateAllTooltips(radarData, config.units);
+    tooltipManager.updateAllTooltips(radarData, config.units, station.lat, station.lng);
 
     const RadarMapOverlay = getRadarMapOverlay();
     radarOverlay = new RadarMapOverlay(map, (overlay) => {
