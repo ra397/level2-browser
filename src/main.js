@@ -10,6 +10,8 @@ import {
 } from "./displayer/radarGl.js";
 import {updateLegend, hideLegend} from "./components/legend.js";
 import {tooltipManager} from "./components/tooltip.js";
+import {Profile} from "./components/profile.js";
+import './components/graph.js';
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },
@@ -27,6 +29,7 @@ let currentSweepIndex = 0;
 let currentMoment = 'REF';
 let currentStation= null;
 let currentRadarData = null;
+let currentProfile = null;
 
 // Fetch station metadata once at startup
 fetch('/data/nexrad.json')
@@ -82,12 +85,27 @@ function visualize(station) {
     radarOverlay.setOpacity(1);
 
     updateLegend(config.palette, config.units, config.labelStep || 1);
+
+    currentProfile = new Profile(map, station.lat, station.lng, 230e3);
+
+    // Refresh profile data if profile exists
+    if (currentProfile) {
+        const data = gatherProfileData(currentProfile.getAzimuth());
+        if (data) {
+            document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+        }
+    }
 }
 
 document.addEventListener('decode-requested', async (e) => {
     const { url } = e.detail;
 
     tooltipManager.clearAll();
+
+    if (currentProfile !== null) {
+        currentProfile.destroy();
+        currentProfile = null;
+    }
 
     const radarId = parseRadarId(url);
     if (!radarId) {
@@ -195,9 +213,89 @@ document.addEventListener('opacity-changed', (e) => {
 document.addEventListener('clear-overlay', () => {
     cleanupOverlay();
     tooltipManager.clearAll();
+    if (currentProfile !== null) {
+        currentProfile.destroy();
+        currentProfile = null;
+    }
     hideLegend();
     radar = null;
     currentRadarData = null;
     currentStation = null;
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
+});
+
+function gatherProfileData(azimuth) {
+    if (!radar) return null;
+
+    const config = PRODUCT_CONFIG[currentMoment];
+
+    // Get unique elevation angles (first sweep for each elevation)
+    const seenElevations = new Set();
+    const sweepsToUse = [];
+
+    for (const sweep of radar.sweeps) {
+        const elevRounded = sweep.elevation.toFixed(1);
+        if (!seenElevations.has(elevRounded)) {
+            seenElevations.add(elevRounded);
+            sweepsToUse.push(sweep);
+        }
+    }
+
+    // Sort by elevation angle
+    sweepsToUse.sort((a, b) => a.elevation - b.elevation);
+
+    const profileData = [];
+
+    for (const sweep of sweepsToUse) {
+        const radarData = radar.getData(sweep.index, currentMoment);
+
+        // Find closest azimuth index
+        let azimuthIndex = 0;
+        let minDiff = 360;
+        for (let i = 0; i < radarData.azimuths.length; i++) {
+            let diff = Math.abs(radarData.azimuths[i] - azimuth);
+            if (diff > 180) diff = 360 - diff;
+            if (diff < minDiff) {
+                minDiff = diff;
+                azimuthIndex = i;
+            }
+        }
+
+        // Extract gate values - every 4th gate (1km), up to 230km
+        const numRanges = radarData.ranges.length;
+        const gateWidthKm = radarData.ranges[1] - radarData.ranges[0]; // typically 0.25km
+        const gatesPerKm = Math.round(1 / gateWidthKm); // typically 4
+        const maxGates = Math.min(numRanges, Math.floor(230 / gateWidthKm));
+
+        const gates = [];
+        for (let r = 0; r < maxGates; r += gatesPerKm) {
+            const dataIndex = azimuthIndex * numRanges + r;
+            const value = radarData.data[dataIndex];
+            const rangeKm = radarData.ranges[r];
+            gates.push({ rangeKm, value });
+        }
+
+        profileData.push({
+            elevation: sweep.elevation,
+            gates: gates
+        });
+    }
+
+    return {
+        profileData,
+        azimuth,
+        moment: currentMoment,
+        units: config.units,
+        palette: config.palette,
+        minValue: config.minValue,
+        maxValue: config.maxValue
+    };
+}
+
+document.addEventListener('profile-azimuth-changed', (e) => {
+    const { azimuth } = e.detail;
+    const data = gatherProfileData(azimuth);
+    if (data) {
+        document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+    }
 });
