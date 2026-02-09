@@ -6,9 +6,10 @@ import "./components/markers.js";
 import {
     buildColorLUT, getRadarMapOverlay,
     REF_PALETTE, RHO_PALETTE, CFP_PALETTE, PHI_PALETTE,
-    SW_PALETTE, VEL_PALETTE, ZDR_PALETTE
+    SW_PALETTE, VEL_PALETTE, ZDR_PALETTE, latLngToRadarIndex
 } from "./displayer/radarGl.js";
 import {updateLegend, hideLegend} from "./components/legend.js";
+import {tooltipManager} from "./components/tooltip.js";
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },
@@ -24,6 +25,8 @@ let radar = null;
 let radarOverlay = null;
 let currentSweepIndex = 0;
 let currentMoment = 'REF';
+let currentStation= null;
+let currentRadarData = null;
 
 // Fetch station metadata once at startup
 fetch('/data/nexrad.json')
@@ -57,6 +60,13 @@ function visualize(station) {
     const config = PRODUCT_CONFIG[moment] || PRODUCT_CONFIG['REF'];
     const radarData = radar.getData(sweepIndex, moment);
 
+    // Store for tooltip
+    currentRadarData = radarData;
+    currentStation = station;
+
+    // update all tooltips
+    tooltipManager.updateAllTooltips(radarData, config.units);
+
     const RadarMapOverlay = getRadarMapOverlay();
     radarOverlay = new RadarMapOverlay(map, (overlay) => {
         const colors = buildColorLUT(config.palette, config.minValue, config.maxValue);
@@ -76,6 +86,8 @@ function visualize(station) {
 
 document.addEventListener('decode-requested', async (e) => {
     const { url } = e.detail;
+
+    tooltipManager.clearAll();
 
     const radarId = parseRadarId(url);
     if (!radarId) {
@@ -145,4 +157,27 @@ document.addEventListener('moment-changed', (e) => {
     const radarId = parseRadarId(document.getElementById('urlInput').value);
     const station = findStation(radarId);
     if (station) visualize(station);
+});
+
+// Map click handler for tooltips
+map.addListener('click', (e) => {
+    if (!currentRadarData || !currentStation) return;
+
+    const clickLat = e.latLng.lat();
+    const clickLng = e.latLng.lng();
+
+    const indices = latLngToRadarIndex(
+        clickLat, clickLng,
+        currentStation.lat, currentStation.lng,
+        currentRadarData.azimuths, currentRadarData.ranges
+    );
+
+    if (!indices) return;
+
+    const { azimuthIndex, rangeIndex } = indices;
+    const dataIndex = azimuthIndex * currentRadarData.ranges.length + rangeIndex;
+    const value = currentRadarData.data[dataIndex];
+
+    const config = PRODUCT_CONFIG[currentMoment];
+    tooltipManager.toggleTooltip(azimuthIndex, rangeIndex, clickLat, clickLng, value, config.units);
 });

@@ -685,6 +685,7 @@ function getRadarMapOverlay() {
             this.canvas = document.createElement('canvas');
             this.canvas.id = "radarMapOverlay";
             this.canvas.style.position = 'absolute';
+            this.canvas.style.pointerEvents = 'none';
 
             // Attach to map
             this.setMap(map);
@@ -799,6 +800,67 @@ function getRadarMapOverlay() {
     };
 
     return RadarMapOverlay;
+}
+
+/**
+ * Convert lat/lng to radar data grid index
+ * @param {number} clickLat - Click latitude
+ * @param {number} clickLng - Click longitude
+ * @param {number} radarLat - Radar station latitude
+ * @param {number} radarLng - Radar station longitude
+ * @param {Float32Array} azimuths - Array of azimuth angles (met convention)
+ * @param {Float32Array} ranges - Array of range values (km)
+ * @returns {{ azimuthIndex: number, rangeIndex: number } | null}
+ */
+export function latLngToRadarIndex(clickLat, clickLng, radarLat, radarLng, azimuths, ranges) {
+    const DEG_TO_RAD = Math.PI / 180;
+    const EARTH_RADIUS = 6378137; // meters
+
+    // Calculate distance and bearing from radar to click point
+    const lat1 = radarLat * DEG_TO_RAD;
+    const lat2 = clickLat * DEG_TO_RAD;
+    const dLat = (clickLat - radarLat) * DEG_TO_RAD;
+    const dLng = (clickLng - radarLng) * DEG_TO_RAD;
+
+    // Haversine distance
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = (EARTH_RADIUS * c) / 1000;
+
+    // Bearing (meteorological convention: 0=North, clockwise)
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    let bearing = Math.atan2(y, x) / DEG_TO_RAD;
+    bearing = (bearing + 360) % 360; // Normalize to 0-360
+
+    // Check if within radar range
+    const maxRange = ranges[ranges.length - 1];
+    if (distanceKm > maxRange) return null;
+
+    // Find the closest range index
+    let rangeIndex = 0;
+    let minRangeDiff = Math.abs(ranges[0] - distanceKm);
+    for (let i = 1; i < ranges.length; i++) {
+        const diff = Math.abs(ranges[i] - distanceKm);
+        if (diff < minRangeDiff) {
+            minRangeDiff = diff;
+            rangeIndex = i;
+        }
+    }
+
+    // Find the closest azimuth index
+    let azimuthIndex = 0;
+    let minAzDiff = 360;
+    for (let i = 0; i < azimuths.length; i++) {
+        let diff = Math.abs(azimuths[i] - bearing);
+        if (diff > 180) diff = 360 - diff; // Handle wraparound
+        if (diff < minAzDiff) {
+            minAzDiff = diff;
+            azimuthIndex = i;
+        }
+    }
+
+    return { azimuthIndex, rangeIndex };
 }
 
 export {
