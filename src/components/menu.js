@@ -4,6 +4,10 @@ const sweepContainer = document.getElementById('sweepContainer');
 const sweepList = document.getElementById('sweepList');
 const momentContainer = document.getElementById('momentContainer');
 const momentList = document.getElementById('momentList');
+const overlayControls = document.getElementById('overlayControls');
+const opacitySlider = document.getElementById('opacitySlider');
+const opacityValue = document.getElementById('opacityValue');
+const clearOverlayBtn = document.getElementById('clearOverlayBtn');
 
 function populateSweeps(sweeps) {
     sweepList.innerHTML = '';
@@ -72,6 +76,7 @@ document.addEventListener('decode-success', (e) => {
 
     populateSweeps(sweeps);
     populateMoments(moments, currentMoment);
+    overlayControls.style.display = '';  // Add this line
 });
 
 // Listen: decode-error
@@ -88,4 +93,25 @@ document.addEventListener('decode-error', (e) => {
 document.addEventListener('moments-updated', (e) => {
     const { moments, currentMoment } = e.detail;
     populateMoments(moments, currentMoment);
+});
+
+// Opacity slider change
+opacitySlider.addEventListener('input', (e) => {
+    const opacity = parseFloat(e.target.value);
+    opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+    document.dispatchEvent(new CustomEvent('opacity-changed', { detail: { opacity } }));
+});
+
+// Clear overlay button
+clearOverlayBtn.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('clear-overlay'));
+});
+
+document.addEventListener('overlay-cleared', () => {
+    urlInput.value = '';
+    sweepContainer.style.display = 'none';
+    momentContainer.style.display = 'none';
+    overlayControls.style.display = 'none';
+    opacitySlider.value = 1;  // Reset slider
+    opacityValue.textContent = '100%';
 });

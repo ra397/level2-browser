@@ -181,3 +181,23 @@ map.addListener('click', (e) => {
     const config = PRODUCT_CONFIG[currentMoment];
     tooltipManager.toggleTooltip(azimuthIndex, rangeIndex, clickLat, clickLng, value, config.units);
 });
+
+// Opacity changed
+document.addEventListener('opacity-changed', (e) => {
+    const { opacity } = e.detail;
+    console.log(opacity);
+    if (radarOverlay) {
+        radarOverlay.setOpacity(opacity);
+    }
+});
+
+// Clear overlay
+document.addEventListener('clear-overlay', () => {
+    cleanupOverlay();
+    tooltipManager.clearAll();
+    hideLegend();
+    radar = null;
+    currentRadarData = null;
+    currentStation = null;
+    document.dispatchEvent(new CustomEvent('overlay-cleared'));
+});

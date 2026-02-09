@@ -101,3 +101,75 @@ body {
     flex-wrap: wrap;
     gap: 8px;
 }
+
+.overlay-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.opacity-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    flex: 1;
+}
+
+#opacitySlider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ddd;
+    border-radius: 2px;
+    outline: none;
+}
+
+#opacitySlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--blue);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#opacitySlider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--blue);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.clear-btn {
+    all: unset;
+    background: #FF3B30;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.clear-btn:hover {
+    opacity: 0.9;
+}
+
+.clear-btn:active {
+    transform: scale(0.97);
+}
+
+#opacityValue {
+    font-size: 12px;
+    color: #8E8E93;
+    min-width: 3.5ch;
+    text-align: right;
+}
