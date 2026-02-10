@@ -81,6 +81,17 @@ export class Profile {
         return this.currentAzimuth;
     }
 
+    setAzimuth(azimuth) {
+        this.currentAzimuth = azimuth;
+        const edgePoint = this._getEdgePoint(this.lat, this.lng, this.distance_m, this.currentAzimuth);
+        this.dragMarker.setPosition(edgePoint);
+        this.line.setPath([
+            { lat: this.lat, lng: this.lng },
+            edgePoint
+        ]);
+        this._dispatchAzimuthChanged();
+    }
+
     _constrainToCircle(lat, lng) {
         const center = { lat: this.lat, lng: this.lng };
         const point = { lat: lat, lng: lng };

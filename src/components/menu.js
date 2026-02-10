@@ -71,7 +71,7 @@ momentList.addEventListener('change', (e) => {
 document.addEventListener('decode-success', (e) => {
     const { sweeps, moments, currentMoment } = e.detail;
 
-    decodeBtn.textContent = 'Decode';
+    decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
     populateSweeps(sweeps);

@@ -336,6 +336,17 @@ document.addEventListener('profile-data-ready', (e) => {
     render();
 });
 
+document.addEventListener('overlay-cleared', () => {
+    currentProfileData = null;
+    currentPalette = null;
+    currentMinValue = 0;
+    currentMaxValue = 100;
+    currentUnits = '';
+    beams = [];
+    render();
+    renderAxes();
+});
+
 // ─── Init ───
 renderAxes();
 window.addEventListener('resize', render);

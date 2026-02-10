@@ -86,7 +86,16 @@ function visualize(station) {
 
     updateLegend(config.palette, config.units, config.labelStep || 1);
 
+    let oldAzimuth = null;
+    if (currentProfile) {
+        oldAzimuth = currentProfile.getAzimuth();
+        currentProfile.destroy();
+        currentProfile = null;
+    }
     currentProfile = new Profile(map, station.lat, station.lng, 230e3);
+    if (oldAzimuth !== null) {
+        currentProfile.setAzimuth(oldAzimuth);
+    }
 
     // Refresh profile data if profile exists
     if (currentProfile) {
