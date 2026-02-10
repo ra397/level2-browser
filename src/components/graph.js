@@ -7,7 +7,7 @@ const BEAMWIDTH = 0.9;
 const HALF_BW = BEAMWIDTH / 2;
 
 const MAX_RANGE_KM = 230;
-const MAX_HEIGHT_KM = 25;
+const MAX_HEIGHT_KM = 15;
 const RANGE_STEPS = 230; // 1 step per km
 const STATION_ELEVATION = 0;
 
@@ -135,7 +135,7 @@ function render() {
     svgContent += `<g clip-path="url(#plotClip)">`;
 
     // Grid lines
-    const yTicks = [0, 5, 10, 15, 20, 25];
+    const yTicks = [0, 5, 10, 15];
     for (const yk of yTicks) {
         const p = dataToSvg(0, yk, vb);
         svgContent += `<line x1="0" y1="${p.y}" x2="${vb.w}" y2="${p.y}" stroke="#141d30" stroke-width="0.5" />`;
@@ -147,7 +147,7 @@ function render() {
     }
 
     // Draw beams with color-coded gates
-    for (let beamIdx = 0; beamIdx < beams.length; beamIdx++) {
+    for (let beamIdx = beams.length - 1; beamIdx >= 0; beamIdx--) {
         const beam = beams[beamIdx];
         const profileBeam = currentProfileData ? currentProfileData[beamIdx] : null;
 
@@ -182,7 +182,7 @@ function render() {
                       data-range="${rangeKm}"
                       points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
                       fill="${color}"
-                      opacity="0.5"
+                      opacity="1.0"
                       stroke="none"
                   />`;
             }
@@ -212,7 +212,7 @@ function renderAxes() {
     const yLabels = document.getElementById('yLabels');
     const xLabels = document.getElementById('xLabels');
 
-    const yTicks = [25, 20, 15, 10, 5, 0];
+    const yTicks = [15, 10, 5, 0];
     yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
 
     const xTicks = [0, 50, 100, 150, 200, 230];
@@ -223,26 +223,20 @@ function renderAxes() {
 function findNearestBeamAndGate(rangeKm, heightKm) {
     let bestBeam = null;
     let bestGate = null;
-    let bestDist = Infinity;
 
     const rangeIdx = Math.round(rangeKm);
     if (rangeIdx < 0 || rangeIdx > RANGE_STEPS) return { beam: null, gate: null };
 
+    // Search from lowest to highest elevation (lowest takes priority in overlap)
     for (let beamIdx = 0; beamIdx < beams.length; beamIdx++) {
         const beam = beams[beamIdx];
         const top = beam.top[rangeIdx];
         const bottom = beam.bottom[rangeIdx];
         const center = beam.center[rangeIdx];
 
-        const distToCenter = Math.abs(heightKm - center);
-        const halfWidth = (top - bottom) / 2;
-        const snapThreshold = Math.max(halfWidth * 1.5, 0.5);
-
-        if (distToCenter < snapThreshold && distToCenter < bestDist) {
-            bestDist = distToCenter;
+        if (heightKm >= bottom && heightKm <= top) {
             bestBeam = { ...beam, beamIdx, centerH: center, topH: top, bottomH: bottom };
 
-            // Find gate at this range
             if (currentProfileData && currentProfileData[beamIdx]) {
                 const gates = currentProfileData[beamIdx].gates;
                 const gateIdx = Math.floor(rangeKm);
@@ -250,9 +244,9 @@ function findNearestBeamAndGate(rangeKm, heightKm) {
                     bestGate = { ...gates[gateIdx], gateIdx };
                 }
             }
+            break; // Stop at first match (lowest elevation)
         }
     }
-
     return { beam: bestBeam, gate: bestGate };
 }
 

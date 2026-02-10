@@ -247,9 +247,15 @@ function gatherProfileData(azimuth) {
     const profileData = [];
 
     for (const sweep of sweepsToUse) {
-        const radarData = radar.getData(sweep.index, currentMoment);
+        let radarData;
+        try {
+            radarData = radar.getData(sweep.index, currentMoment);
+        } catch (e) {
+            // Moment not available for this sweep, skip it
+            continue;
+        }
 
-        // Find closest azimuth index
+        // Find the closest azimuth index
         let azimuthIndex = 0;
         let minDiff = 360;
         for (let i = 0; i < radarData.azimuths.length; i++) {
@@ -261,18 +267,32 @@ function gatherProfileData(azimuth) {
             }
         }
 
-        // Extract gate values - every 4th gate (1km), up to 230km
+        // Extract gate values - one per km, up to 230km
         const numRanges = radarData.ranges.length;
-        const gateWidthKm = radarData.ranges[1] - radarData.ranges[0]; // typically 0.25km
-        const gatesPerKm = Math.round(1 / gateWidthKm); // typically 4
-        const maxGates = Math.min(numRanges, Math.floor(230 / gateWidthKm));
-
         const gates = [];
-        for (let r = 0; r < maxGates; r += gatesPerKm) {
-            const dataIndex = azimuthIndex * numRanges + r;
-            const value = radarData.data[dataIndex];
-            const rangeKm = radarData.ranges[r];
-            gates.push({ rangeKm, value });
+
+        for (let km = 0; km < 230; km++) {
+            // Find the gate closest to this km
+            let bestRangeIdx = null;
+            let bestDiff = Infinity;
+
+            for (let r = 0; r < numRanges; r++) {
+                const diff = Math.abs(radarData.ranges[r] - km);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestRangeIdx = r;
+                }
+                // Early exit if we've passed the target
+                if (radarData.ranges[r] > km + 0.5) break;
+            }
+
+            if (bestRangeIdx !== null && bestDiff < 1) {
+                const dataIndex = azimuthIndex * numRanges + bestRangeIdx;
+                const value = radarData.data[dataIndex];
+                gates.push({ rangeKm: km, value });
+            } else {
+                gates.push({ rangeKm: km, value: NaN });
+            }
         }
 
         profileData.push({
