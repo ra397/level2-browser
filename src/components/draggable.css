@@ -1,0 +1,55 @@
+div.drag-cnr {
+    --drag-off: -5px;
+    --drag-size: 15px;
+    --drag-brd-wdt: 4px;
+    --drag-brd-clr: var(--blue);
+    position: absolute;
+    width: var(--drag-size);
+    height: var(--drag-size);
+    border: var(--drag-brd-wdt) solid var(--drag-brd-clr);
+    border-radius: 4px;
+    background: none;
+    z-index: 2;
+    transition: all 1s;
+    animation: border-pulsate 1s;
+}
+
+@keyframes border-pulsate {
+    0% { border-color: var(--drag-brd-clr); }
+    100% { border-color: var(--drag-brd-clr); }
+}
+
+div.drag-cnr:hover {
+    width: 20px;
+    height: 20px;
+    background: #ffffff;
+    border-color: var(--drag-brd-clr);
+    cursor: move;
+    transition: all 0.133s;
+    animation: none;
+    z-index: 2;
+}
+
+.drag-cnr.tl-cnr {
+    top: var(--drag-off);
+    left: var(--drag-off);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.drag-cnr.tr-cnr {
+    top: var(--drag-off);
+    right: var(--drag-off);
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.drag-cnr.br-cnr {
+    bottom: var(--drag-off);
+    right: var(--drag-off);
+    clip-path: polygon(0 100%, 100% 100%, 100% 0);
+}
+
+.drag-cnr.bl-cnr {
+    left: var(--drag-off);
+    bottom: var(--drag-off);
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
