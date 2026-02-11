@@ -9,8 +9,59 @@ const HALF_BW = BEAMWIDTH / 2;
 
 const MAX_RANGE_KM = 230;
 const MAX_HEIGHT_KM = 15;
-const RANGE_STEPS = 230; // 1 step per km
+const RANGE_STEPS = 230;
 const STATION_ELEVATION = 0;
+
+// ─── State ───
+let currentMode = 'AHI';
+let currentProfileData = null;
+let currentPalette = null;
+let currentMinValue = 0;
+let currentMaxValue = 100;
+let currentUnits = '';
+let beams = [];
+
+// RHI specific state
+let rhiStartAzimuth = 0;
+let rhiEndAzimuth = 15;
+let rhiRangeKm = 50;
+
+// ─── SVG Setup ───
+const svg = document.getElementById('beamSvg');
+const container = document.getElementById('graphContainer');
+const tooltip = document.getElementById('tooltip');
+
+// ─── Mode Switcher ───
+function createModeSwitcher() {
+    const titleBar = document.querySelector('.title-bar');
+    if (!titleBar) return;
+
+    titleBar.innerHTML = `
+          <div class="mode-switcher">
+              <label>
+                  <input type="radio" name="profileMode" value="AHI" checked>
+                  AHI
+              </label>
+              <label>
+                  <input type="radio" name="profileMode" value="RHI">
+                  RHI
+              </label>
+          </div>
+      `;
+
+    titleBar.addEventListener('change', (e) => {
+        if (e.target.name === 'profileMode') {
+            currentMode = e.target.value;
+            currentProfileData = null;
+            beams = [];
+            render();
+            renderAxes();
+            document.dispatchEvent(new CustomEvent('profile-mode-changed', {
+                detail: { mode: currentMode }
+            }));
+        }
+    });
+}
 
 // ─── Beam height calculation ───
 function calculateBeamHeights(groundRanges, eaDeg, elevation) {
@@ -36,32 +87,30 @@ function calculateBeamHeights(groundRanges, eaDeg, elevation) {
     });
 }
 
+function calculateBeamWidthKm(rangeKm, elevationDeg) {
+    const rangeM = rangeKm * 1000;
+    const elevRad = elevationDeg * Math.PI / 180;
+    const beamwidthRad = BEAMWIDTH * Math.PI / 180;
+
+    // Beam width at slant range
+    const slantRange = rangeM / Math.cos(elevRad);
+    const widthM = 2 * slantRange * Math.tan(beamwidthRad / 2);
+    return widthM / 1000;
+}
+
 // ─── Generate ground ranges (1km steps) ───
 const groundRanges = [];
 for (let i = 0; i <= RANGE_STEPS; i++) {
-    groundRanges.push(i * 1000); // meters
+    groundRanges.push(i * 1000);
 }
 const rangesKm = groundRanges.map(r => r / 1000);
-
-// ─── SVG Setup ───
-const svg = document.getElementById('beamSvg');
-const container = document.getElementById('graphContainer');
-const tooltip = document.getElementById('tooltip');
-
-// Current profile data
-let currentProfileData = null;
-let currentPalette = null;
-let currentMinValue = 0;
-let currentMaxValue = 100;
-let currentUnits = '';
-let beams = [];
 
 function getViewBox() {
     const rect = container.getBoundingClientRect();
     return { w: rect.width, h: rect.height };
 }
 
-function dataToSvg(rangeKm, heightKm, vb) {
+function dataToSvgAHI(rangeKm, heightKm, vb) {
     const x = (rangeKm / MAX_RANGE_KM) * vb.w;
     const y = vb.h - (heightKm / MAX_HEIGHT_KM) * vb.h;
     return { x, y };
@@ -69,7 +118,7 @@ function dataToSvg(rangeKm, heightKm, vb) {
 
 function buildPath(xArr, yArr, vb) {
     const pts = xArr.map((xk, i) => {
-        const p = dataToSvg(xk, yArr[i], vb);
+        const p = dataToSvgAHI(xk, yArr[i], vb);
         return `${p.x},${p.y}`;
     });
     return pts.join(' ');
@@ -77,12 +126,11 @@ function buildPath(xArr, yArr, vb) {
 
 function valueToColor(value, palette, minValue, maxValue) {
     if (value === null || isNaN(value)) {
-        return null; // No data
+        return null;
     }
 
     const sortedKeys = Object.keys(palette).map(Number).sort((a, b) => a - b);
 
-    // Find surrounding palette entries
     let lowerKey = sortedKeys[0];
     let upperKey = sortedKeys[sortedKeys.length - 1];
 
@@ -111,43 +159,58 @@ function valueToColor(value, palette, minValue, maxValue) {
     return `rgb(${r},${g},${b})`;
 }
 
-function computeBeams(elevationAngles) {
-    return elevationAngles.map((elev) => {
+function computeBeamsAHI(elevationAngles) {
+    return elevationAngles.map((elev, idx) => {
         const center = calculateBeamHeights(groundRanges, elev, STATION_ELEVATION).map(h => h / 1000);
         const top = calculateBeamHeights(groundRanges, elev + HALF_BW, STATION_ELEVATION).map(h => h / 1000);
         const bottom = calculateBeamHeights(groundRanges, elev - HALF_BW, STATION_ELEVATION).map(h => h / 1000);
-        return { elev, center, top, bottom };
+        return { elev, center, top, bottom, idx };
     });
 }
 
-function render() {
+function computeBeamsRHI(elevationAngles, rangeKm) {
+    // Calculate beam widths and create proportional slots
+    const beamWidths = elevationAngles.map(elev => calculateBeamWidthKm(rangeKm, elev));
+    const totalWidth = beamWidths.reduce((sum, w) => sum + w, 0);
+
+    let currentY = 0;
+    return elevationAngles.map((elev, idx) => {
+        const heightRatio = beamWidths[idx] / totalWidth;
+        const slotBottom = currentY;
+        const slotTop = currentY + heightRatio;
+        currentY = slotTop;
+        return { elev, slotBottom, slotTop, idx, beamWidthKm: beamWidths[idx] };
+    });
+}
+
+// ─── AHI Render ───
+function renderAHI() {
     const vb = getViewBox();
     svg.setAttribute('viewBox', `0 0 ${vb.w} ${vb.h}`);
 
     let svgContent = '';
 
-    // Defs for clipping
     svgContent += `<defs>
-      <clipPath id="plotClip">
-        <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
-      </clipPath>
-    </defs>`;
+          <clipPath id="plotClip">
+              <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+          </clipPath>
+      </defs>`;
 
     svgContent += `<g clip-path="url(#plotClip)">`;
 
     // Grid lines
     const yTicks = [0, 5, 10, 15];
     for (const yk of yTicks) {
-        const p = dataToSvg(0, yk, vb);
+        const p = dataToSvgAHI(0, yk, vb);
         svgContent += `<line x1="0" y1="${p.y}" x2="${vb.w}" y2="${p.y}" stroke="#141d30" stroke-width="0.5" />`;
     }
     const xTicks = [0, 50, 100, 150, 200];
     for (const xk of xTicks) {
-        const p = dataToSvg(xk, 0, vb);
+        const p = dataToSvgAHI(xk, 0, vb);
         svgContent += `<line x1="${p.x}" y1="0" x2="${p.x}" y2="${vb.h}" stroke="#141d30" stroke-width="0.5" />`;
     }
 
-    // Draw beams with color-coded gates
+    // Draw beams (highest first, lowest last)
     for (let beamIdx = beams.length - 1; beamIdx >= 0; beamIdx--) {
         const beam = beams[beamIdx];
         const profileBeam = currentProfileData ? currentProfileData[beamIdx] : null;
@@ -155,25 +218,23 @@ function render() {
         svgContent += `<g class="beam-group" data-elev="${beam.elev}" data-beam-idx="${beamIdx}">`;
 
         if (profileBeam && currentPalette) {
-            // Draw each gate as a colored rectangle
             for (let gateIdx = 0; gateIdx < profileBeam.gates.length; gateIdx++) {
                 const gate = profileBeam.gates[gateIdx];
                 const rangeKm = gate.rangeKm;
-                const nextRangeKm = rangeKm + 1; // 1km per gate
+                const nextRangeKm = rangeKm + 1;
 
                 if (rangeKm >= MAX_RANGE_KM) continue;
 
                 const color = valueToColor(gate.value, currentPalette, currentMinValue, currentMaxValue);
-                if (!color) continue; // Skip no-data
+                if (!color) continue;
 
-                // Get beam heights at this range
                 const rangeIdx = Math.round(rangeKm);
                 const nextRangeIdx = Math.min(rangeIdx + 1, RANGE_STEPS);
 
-                const topLeft = dataToSvg(rangeKm, beam.top[rangeIdx], vb);
-                const topRight = dataToSvg(nextRangeKm, beam.top[nextRangeIdx], vb);
-                const bottomRight = dataToSvg(nextRangeKm, beam.bottom[nextRangeIdx], vb);
-                const bottomLeft = dataToSvg(rangeKm, beam.bottom[rangeIdx], vb);
+                const topLeft = dataToSvgAHI(rangeKm, beam.top[rangeIdx], vb);
+                const topRight = dataToSvgAHI(nextRangeKm, beam.top[nextRangeIdx], vb);
+                const bottomRight = dataToSvgAHI(nextRangeKm, beam.bottom[nextRangeIdx], vb);
+                const bottomLeft = dataToSvgAHI(rangeKm, beam.bottom[rangeIdx], vb);
 
                 svgContent += `<polygon
                       class="gate-fill"
@@ -181,54 +242,191 @@ function render() {
                       data-gate-idx="${gateIdx}"
                       data-value="${gate.value}"
                       data-range="${rangeKm}"
-                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+  ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
                       fill="${color}"
-                      opacity="1.0"
                       stroke="none"
                   />`;
             }
         }
 
-        // Draw beam outline
+        // Beam outline
         const topPath = buildPath(rangesKm, beam.top, vb);
         const bottomReversed = [...beam.bottom].reverse();
         const rangesReversed = [...rangesKm].reverse();
         const bottomPath = buildPath(rangesReversed, bottomReversed, vb);
 
-        svgContent += `<polygon class="beam-outline" points="${topPath} ${bottomPath}" fill="none" stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
+        svgContent += `<polygon class="beam-outline" points="${topPath} ${bottomPath}" fill="none"
+  stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
 
         svgContent += `</g>`;
     }
 
-    // Crosshair lines
-    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none" />`;
-    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none" />`;
+    // Crosshairs
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
+  />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
+  />`;
 
     svgContent += `</g>`;
     svg.innerHTML = svgContent;
 }
 
+// ─── RHI Render ───
+function renderRHI() {
+    const vb = getViewBox();
+    svg.setAttribute('viewBox', `0 0 ${vb.w} ${vb.h}`);
+
+    let svgContent = '';
+
+    svgContent += `<defs>
+          <clipPath id="plotClip">
+              <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+          </clipPath>
+      </defs>`;
+
+    svgContent += `<g clip-path="url(#plotClip)">`;
+
+    const sliceWidth = rhiEndAzimuth >= rhiStartAzimuth
+        ? rhiEndAzimuth - rhiStartAzimuth
+        : (360 - rhiStartAzimuth) + rhiEndAzimuth;
+
+    // Grid lines - vertical (azimuth)
+    for (let i = 0; i <= sliceWidth; i += 3) {
+        const x = (i / sliceWidth) * vb.w;
+        svgContent += `<line x1="${x}" y1="0" x2="${x}" y2="${vb.h}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Horizontal grid lines per beam
+    for (const beam of beams) {
+        const y = vb.h - beam.slotBottom * vb.h;
+        svgContent += `<line x1="0" y1="${y}" x2="${vb.w}" y2="${y}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+    if (beams.length > 0) {
+        const y = vb.h - beams[beams.length - 1].slotTop * vb.h;
+        svgContent += `<line x1="0" y1="${y}" x2="${vb.w}" y2="${y}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Draw beams (highest first, lowest last)
+    for (let beamIdx = beams.length - 1; beamIdx >= 0; beamIdx--) {
+        const beam = beams[beamIdx];
+        const profileBeam = currentProfileData ? currentProfileData[beamIdx] : null;
+
+        svgContent += `<g class="beam-group" data-elev="${beam.elev}" data-beam-idx="${beamIdx}">`;
+
+        if (profileBeam && currentPalette) {
+            for (let gateIdx = 0; gateIdx < profileBeam.gates.length; gateIdx++) {
+                const gate = profileBeam.gates[gateIdx];
+
+                // Calculate x position based on azimuth within slice
+                let azOffset = gate.azimuth - rhiStartAzimuth;
+                if (azOffset < 0) azOffset += 360;
+
+                const x = (azOffset / sliceWidth) * vb.w;
+                const nextX = ((azOffset + 1) / sliceWidth) * vb.w;
+
+                const color = valueToColor(gate.value, currentPalette, currentMinValue, currentMaxValue);
+                if (!color) continue;
+
+                const top = vb.h - beam.slotTop * vb.h;
+                const bottom = vb.h - beam.slotBottom * vb.h;
+
+                svgContent += `<rect
+                      class="gate-fill"
+                      data-beam-idx="${beamIdx}"
+                      data-gate-idx="${gateIdx}"
+                      data-value="${gate.value}"
+                      data-azimuth="${gate.azimuth}"
+                      x="${x}"
+                      y="${top}"
+                      width="${Math.max(nextX - x, 1)}"
+                      height="${bottom - top}"
+                      fill="${color}"
+                      stroke="none"
+                  />`;
+            }
+        }
+
+        // Beam outline
+        const top = vb.h - beam.slotTop * vb.h;
+        const bottom = vb.h - beam.slotBottom * vb.h;
+        svgContent += `<rect class="beam-outline" x="0" y="${top}" width="${vb.w}" height="${bottom - top}"
+  fill="none" stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
+
+        svgContent += `</g>`;
+    }
+
+    // Crosshairs
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
+  />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
+  />`;
+
+    svgContent += `</g>`;
+    svg.innerHTML = svgContent;
+}
+
+function render() {
+    if (currentMode === 'AHI') {
+        renderAHI();
+    } else {
+        renderRHI();
+    }
+}
+
 // ─── Axis labels ───
-function renderAxes() {
+function renderAxesAHI() {
     const yLabels = document.getElementById('yLabels');
     const xLabels = document.getElementById('xLabels');
 
     const yTicks = [15, 10, 5, 0];
-    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
+    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v} km</span>`).join('');
 
     const xTicks = [0, 50, 100, 150, 200, 230];
     xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
 }
 
+function renderAxesRHI() {
+    const yLabels = document.getElementById('yLabels');
+    const xLabels = document.getElementById('xLabels');
+
+    // Y-axis: elevation angles
+    if (beams.length > 0) {
+        yLabels.innerHTML = [...beams].reverse().map(b =>
+            `<span class="label">${b.elev.toFixed(1)}°</span>`
+        ).join('');
+    } else {
+        yLabels.innerHTML = '';
+    }
+
+    // X-axis: azimuth range
+    const sliceWidth = rhiEndAzimuth >= rhiStartAzimuth
+        ? rhiEndAzimuth - rhiStartAzimuth
+        : (360 - rhiStartAzimuth) + rhiEndAzimuth;
+
+    const xTicks = [];
+    for (let i = 0; i <= sliceWidth; i += 3) {
+        xTicks.push(((rhiStartAzimuth + i) % 360).toFixed(0));
+    }
+    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}°</span>`).join('');
+}
+
+function renderAxes() {
+    if (currentMode === 'AHI') {
+        renderAxesAHI();
+    } else {
+        renderAxesRHI();
+    }
+}
+
 // ─── Hover logic ───
-function findNearestBeamAndGate(rangeKm, heightKm) {
+function findNearestBeamAndGateAHI(rangeKm, heightKm) {
     let bestBeam = null;
     let bestGate = null;
 
     const rangeIdx = Math.round(rangeKm);
     if (rangeIdx < 0 || rangeIdx > RANGE_STEPS) return { beam: null, gate: null };
 
-    // Search from lowest to highest elevation (lowest takes priority in overlap)
     for (let beamIdx = 0; beamIdx < beams.length; beamIdx++) {
         const beam = beams[beamIdx];
         const top = beam.top[rangeIdx];
@@ -245,9 +443,47 @@ function findNearestBeamAndGate(rangeKm, heightKm) {
                     bestGate = { ...gates[gateIdx], gateIdx };
                 }
             }
-            break; // Stop at first match (lowest elevation)
+            break;
         }
     }
+
+    return { beam: bestBeam, gate: bestGate };
+}
+
+function findNearestBeamAndGateRHI(azimuthOffset, slotY) {
+    let bestBeam = null;
+    let bestGate = null;
+
+    for (let beamIdx = 0; beamIdx < beams.length; beamIdx++) {
+        const beam = beams[beamIdx];
+
+        if (slotY >= beam.slotBottom && slotY <= beam.slotTop) {
+            bestBeam = { ...beam, beamIdx };
+
+            if (currentProfileData && currentProfileData[beamIdx]) {
+                const gates = currentProfileData[beamIdx].gates;
+                // Find gate by azimuth
+                const targetAz = (rhiStartAzimuth + azimuthOffset) % 360;
+                let closestGate = null;
+                let closestDiff = Infinity;
+
+                for (let i = 0; i < gates.length; i++) {
+                    let diff = Math.abs(gates[i].azimuth - targetAz);
+                    if (diff > 180) diff = 360 - diff;
+                    if (diff < closestDiff) {
+                        closestDiff = diff;
+                        closestGate = { ...gates[i], gateIdx: i };
+                    }
+                }
+
+                if (closestGate) {
+                    bestGate = closestGate;
+                }
+            }
+            break;
+        }
+    }
+
     return { beam: bestBeam, gate: bestGate };
 }
 
@@ -257,10 +493,6 @@ container.addEventListener('mousemove', (e) => {
     const my = e.clientY - rect.top;
     const vb = { w: rect.width, h: rect.height };
 
-    const rangeKm = (mx / vb.w) * MAX_RANGE_KM;
-    const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;
-
-    // Update crosshairs
     const crossX = document.getElementById('crosshairX');
     const crossY = document.getElementById('crosshairY');
     if (crossX && crossY) {
@@ -272,31 +504,60 @@ container.addEventListener('mousemove', (e) => {
         crossY.setAttribute('y2', my);
     }
 
-    const { beam, gate } = findNearestBeamAndGate(rangeKm, heightKm);
+    let beam, gate;
 
-    // Reset highlights
-    svg.querySelectorAll('.beam-group').forEach(g => {
-        g.querySelectorAll('.gate-fill').forEach(gf => {
-            gf.style.opacity = '';
-        });
-    });
+    if (currentMode === 'AHI') {
+        const rangeKm = (mx / vb.w) * MAX_RANGE_KM;
+        const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;
+        ({ beam, gate } = findNearestBeamAndGateAHI(rangeKm, heightKm));
+
+        if (beam) {
+            tooltip.style.display = 'block';
+
+            let valueDisplay = 'No Data';
+            if (gate && gate.value !== null && !isNaN(gate.value)) {
+                valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
+            }
+
+            tooltip.innerHTML = `
+                  <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
+                  <div>Range: ${rangeKm.toFixed(1)} km</div>
+                  <div>Value: ${valueDisplay}</div>
+              `;
+        } else {
+            tooltip.style.display = 'none';
+        }
+    } else {
+        const sliceWidth = rhiEndAzimuth >= rhiStartAzimuth
+            ? rhiEndAzimuth - rhiStartAzimuth
+            : (360 - rhiStartAzimuth) + rhiEndAzimuth;
+
+        const azimuthOffset = (mx / vb.w) * sliceWidth;
+        const slotY = 1 - (my / vb.h);
+        ({ beam, gate } = findNearestBeamAndGateRHI(azimuthOffset, slotY));
+
+        if (beam) {
+            tooltip.style.display = 'block';
+
+            let valueDisplay = 'No Data';
+            if (gate && gate.value !== null && !isNaN(gate.value)) {
+                valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
+            }
+
+            const displayAz = ((rhiStartAzimuth + azimuthOffset) % 360).toFixed(1);
+
+            tooltip.innerHTML = `
+                  <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
+                  <div>Azimuth: ${displayAz}°</div>
+                  <div>Range: ${rhiRangeKm.toFixed(2)} km</div>
+                  <div>Value: ${valueDisplay}</div>
+              `;
+        } else {
+            tooltip.style.display = 'none';
+        }
+    }
 
     if (beam) {
-        tooltip.style.display = 'block';
-
-        let valueDisplay = 'No Data';
-        if (gate && gate.value !== null && !isNaN(gate.value)) {
-            valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
-        }
-
-        tooltip.innerHTML = `
-              <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
-              <div>Range: ${rangeKm.toFixed(1)} km</div>
-              <div>Height: ${beam.centerH.toFixed(2)} km (${(beam.centerH * 3280.84).toFixed(0)} ft)</div>
-              <div>Value: ${valueDisplay}</div>
-          `;
-
-        // Position tooltip
         let tx = mx + 14;
         let ty = my - 10;
         const tw = tooltip.offsetWidth;
@@ -306,8 +567,6 @@ container.addEventListener('mousemove', (e) => {
         if (ty < 0) ty = 4;
         tooltip.style.left = tx + 'px';
         tooltip.style.top = ty + 'px';
-    } else {
-        tooltip.style.display = 'none';
     }
 });
 
@@ -319,8 +578,10 @@ container.addEventListener('mouseleave', () => {
     if (crossY) crossY.style.display = 'none';
 });
 
-// ─── Listen for profile data ───
+// ─── Event Listeners ───
 document.addEventListener('profile-data-ready', (e) => {
+    if (currentMode !== 'AHI') return;
+
     const { profileData, azimuth, moment, units, palette, minValue, maxValue } = e.detail;
 
     currentProfileData = profileData;
@@ -329,11 +590,32 @@ document.addEventListener('profile-data-ready', (e) => {
     currentMaxValue = maxValue;
     currentUnits = units;
 
-    // Compute beams for the elevation angles in the data
     const elevationAngles = profileData.map(p => p.elevation);
-    beams = computeBeams(elevationAngles);
+    beams = computeBeamsAHI(elevationAngles);
 
     render();
+    renderAxes();
+});
+
+document.addEventListener('profile-rhi-data-ready', (e) => {
+    if (currentMode !== 'RHI') return;
+
+    const { profileData, startAzimuth, endAzimuth, rangeKm, units, palette, minValue, maxValue } = e.detail;
+
+    currentProfileData = profileData;
+    currentPalette = palette;
+    currentMinValue = minValue;
+    currentMaxValue = maxValue;
+    currentUnits = units;
+    rhiStartAzimuth = startAzimuth;
+    rhiEndAzimuth = endAzimuth;
+    rhiRangeKm = rangeKm;
+
+    const elevationAngles = profileData.map(p => p.elevation);
+    beams = computeBeamsRHI(elevationAngles, rangeKm);
+
+    render();
+    renderAxes();
 });
 
 document.addEventListener('overlay-cleared', () => {
@@ -348,6 +630,7 @@ document.addEventListener('overlay-cleared', () => {
 });
 
 // ─── Init ───
+createModeSwitcher();
 renderAxes();
 window.addEventListener('resize', render);
 

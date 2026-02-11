@@ -7,7 +7,7 @@
     bottom: 1ch;
     background-color: white;
     padding: 0 2ch 2ch 0;
-    height: 560px;
+    height: 530px;
 }
 
 .y-axis-container {
@@ -143,4 +143,22 @@
     stroke-width: 0.5;
     stroke-dasharray: 3 3;
     pointer-events: none;
+}
+
+.mode-switcher {
+    display: flex;
+    gap: 16px;
+}
+
+.mode-switcher label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #5a6a8a;
+    cursor: pointer;
+}
+
+.mode-switcher input[type="radio"] {
+    cursor: pointer;
 }

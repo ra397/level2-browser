@@ -86,23 +86,27 @@ function visualize(station) {
 
     updateLegend(config.palette, config.units, config.labelStep || 1);
 
-    let oldAzimuth = null;
+    // Handle profile - preserve state if it exists, otherwise create new
     if (currentProfile) {
-        oldAzimuth = currentProfile.getAzimuth();
-        currentProfile.destroy();
-        currentProfile = null;
-    }
-    currentProfile = new Profile(map, station.lat, station.lng, 230e3);
-    if (oldAzimuth !== null) {
-        currentProfile.setAzimuth(oldAzimuth);
-    }
-
-    // Refresh profile data if profile exists
-    if (currentProfile) {
-        const data = gatherProfileData(currentProfile.getAzimuth());
-        if (data) {
-            document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+        // Profile exists, refresh the data
+        if (currentProfile.getMode() === 'AHI') {
+            const data = gatherProfileData(currentProfile.getAzimuth());
+            if (data) {
+                document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+            }
+        } else {
+            const data = gatherRHIData(
+                currentProfile.getAzimuth(),
+                currentProfile.getEndAzimuth(),
+                currentProfile.getRangeKm()
+            );
+            if (data) {
+                document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
+            }
         }
+    } else {
+        // No profile yet, create one
+        currentProfile = new Profile(map, station.lat, station.lng, 230e3);
     }
 }
 
@@ -321,10 +325,120 @@ function gatherProfileData(azimuth) {
     };
 }
 
+function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
+    if (!radar) return null;
+
+    const config = PRODUCT_CONFIG[currentMoment];
+
+    // Get unique elevation angles (first sweep for each elevation)
+    const seenElevations = new Set();
+    const sweepsToUse = [];
+
+    for (const sweep of radar.sweeps) {
+        const elevRounded = sweep.elevation.toFixed(1);
+        if (!seenElevations.has(elevRounded)) {
+            seenElevations.add(elevRounded);
+            sweepsToUse.push(sweep);
+        }
+    }
+
+    sweepsToUse.sort((a, b) => a.elevation - b.elevation);
+
+    const profileData = [];
+
+    for (const sweep of sweepsToUse) {
+        let radarData;
+        try {
+            radarData = radar.getData(sweep.index, currentMoment);
+        } catch (e) {
+            continue;
+        }
+
+        // Find the range gate closest to rangeKm
+        const numRanges = radarData.ranges.length;
+        let bestRangeIdx = 0;
+        let bestDiff = Infinity;
+        for (let r = 0; r < numRanges; r++) {
+            const diff = Math.abs(radarData.ranges[r] - rangeKm);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestRangeIdx = r;
+            }
+        }
+
+        // Extract data for all azimuths within the slice
+        const gates = [];
+        for (let i = 0; i < radarData.azimuths.length; i++) {
+            let az = radarData.azimuths[i];
+
+            // Check if azimuth is within slice
+            let inSlice = false;
+            if (startAzimuth <= endAzimuth) {
+                inSlice = az >= startAzimuth && az <= endAzimuth;
+            } else {
+                // Slice wraps around 360
+                inSlice = az >= startAzimuth || az <= endAzimuth;
+            }
+
+            if (inSlice) {
+                const dataIndex = i * numRanges + bestRangeIdx;
+                const value = radarData.data[dataIndex];
+                gates.push({ azimuth: az, value });
+            }
+        }
+
+        // Sort gates by azimuth
+        gates.sort((a, b) => {
+            // Handle wraparound
+            let azA = a.azimuth;
+            let azB = b.azimuth;
+            if (startAzimuth > endAzimuth) {
+                if (azA < startAzimuth) azA += 360;
+                if (azB < startAzimuth) azB += 360;
+            }
+            return azA - azB;
+        });
+
+        profileData.push({
+            elevation: sweep.elevation,
+            gates: gates
+        });
+    }
+
+    return {
+        profileData,
+        startAzimuth,
+        endAzimuth,
+        rangeKm,
+        moment: currentMoment,
+        units: config.units,
+        palette: config.palette,
+        minValue: config.minValue,
+        maxValue: config.maxValue
+    };
+}
+
 document.addEventListener('profile-azimuth-changed', (e) => {
     const { azimuth } = e.detail;
     const data = gatherProfileData(azimuth);
     if (data) {
         document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+    }
+});
+
+// Listen for RHI profile changes
+document.addEventListener('profile-rhi-changed', (e) => {
+    const { startAzimuth, endAzimuth, rangeKm } = e.detail;
+    const data = gatherRHIData(startAzimuth, endAzimuth, rangeKm);
+    if (data) {
+        document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
+    }
+});
+
+// Listen for mode changes from graph
+document.addEventListener('profile-mode-changed', (e) => {
+    const { mode } = e.detail;
+    if (currentProfile) {
+        currentProfile.setMode(mode);
     }
 });
