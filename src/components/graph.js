@@ -30,6 +30,70 @@ let rhiStartAzimuth = 0;
 let rhiEndAzimuth = 15;
 let rhiRangeKm = 50;
 
+let isFolded = true;
+let hasData = false;
+
+function initFoldButton() {
+    const foldBtn = document.getElementById('foldBtn');
+    if (!foldBtn) return;
+
+    foldBtn.addEventListener('click', toggleFold);
+
+    // Start folded
+    setFolded(true);
+}
+
+function toggleFold() {
+    if (isFolded && !hasData) {
+        return;
+    }
+    setFolded(!isFolded);
+}
+
+function setFolded(folded) {
+    isFolded = folded;
+    const wrapper = document.querySelector(".graph-wrapper");
+    const content = document.querySelector('.graph-content');
+    const foldBtn = document.getElementById('foldBtn');
+
+    if (!content || !foldBtn) return;
+
+    if (isFolded) {
+        content.style.display = 'none';
+        foldBtn.textContent = '+';
+        wrapper.style.height = 'fit-content';
+        wrapper.style.width = 'fit-content'
+    } else {
+        wrapper.style.height = 'fit-content';
+        wrapper.style.width = '1400px';
+        content.style.display = '';
+        foldBtn.textContent = '−';
+    }
+
+    // Update disabled state
+    if (hasData) {
+        foldBtn.disabled = false;
+        foldBtn.classList.remove('disabled');
+    } else {
+        foldBtn.disabled = true;
+        foldBtn.classList.add('disabled');
+    }
+}
+
+function setHasData(value) {
+    hasData = value;
+    const foldBtn = document.getElementById('foldBtn');
+    if (foldBtn) {
+        if (hasData) {
+            foldBtn.disabled = false;
+            foldBtn.classList.remove('disabled');
+        } else {
+            foldBtn.disabled = true;
+            foldBtn.classList.add('disabled');
+        }
+    }
+}
+
 // ─── SVG Setup ───
 const svg = document.getElementById('beamSvg');
 const container = document.getElementById('graphContainer');
@@ -667,11 +731,13 @@ document.addEventListener('profile-data-ready', (e) => {
     currentTerrainWidth = terrainWidth;
     currentAzimuth = azimuth;
 
-    // Get station elevation from first terrain value (convert meters to km)
     stationElevationKm = (terrain && terrain.length > 0) ? terrain[0] / 1000 : 0;
 
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsAHI(elevationAngles);
+
+    setHasData(true);
+    setFolded(false);
 
     render();
     renderAxes();
@@ -695,6 +761,9 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsRHI(elevationAngles, rangeKm);
 
+    setHasData(true);
+    setFolded(false);
+
     render();
     renderAxes();
     updateProfileInfo();
@@ -710,12 +779,19 @@ document.addEventListener('overlay-cleared', () => {
     currentTerrain = null;
     currentTerrainWidth = null;
     stationElevationKm = 0;
+    currentAzimuth = 0;
+
+    setHasData(false);
+    setFolded(true);
+
     render();
     renderAxes();
+    updateProfileInfo();
 });
 
 // ─── Init ───
 createModeSwitcher();
+initFoldButton();
 renderAxes();
 window.addEventListener('resize', render);
 

@@ -51,22 +51,23 @@
     </div>
 
     <div class="graph-wrapper">
-        <div class="title-bar">
-            <h2>Radar Beam Propagation</h2>
-            <span class="subtitle">4/3 Earth Radius Model · 0.9° Beamwidth</span>
+        <div class="graph-header">
+            <span class="graph-title">Profile Graph</span>
+            <button id="foldBtn" class="fold-btn" disabled>+</button>
         </div>
-
-        <div class="y-axis-container">
-            <span class="y-axis-title">Height (km)</span>
-            <div class="y-axis-labels" id="yLabels"></div>
-            <div class="graph-container" id="graphContainer">
-                <svg id="beamSvg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
-                <div class="tooltip" id="tooltip"></div>
+        <div class="graph-content">
+            <div class="title-bar"></div>
+            <div class="y-axis-container">
+                <div class="y-axis-title">Height (km)</div>
+                <div class="y-axis-labels" id="yLabels"></div>
+                <div class="graph-container" id="graphContainer">
+                    <svg id="beamSvg"></svg>
+                    <div class="tooltip" id="tooltip"></div>
+                </div>
             </div>
+            <div class="x-axis-labels" id="xLabels"></div>
+            <div class="x-axis-title">Ground Range (km)</div>
         </div>
-
-        <div class="x-axis-labels" id="xLabels"></div>
-        <div class="x-axis-title">Ground Range (km)</div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
