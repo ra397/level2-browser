@@ -20,6 +20,8 @@ let currentMinValue = 0;
 let currentMaxValue = 100;
 let currentUnits = '';
 let beams = [];
+let currentTerrain = null;
+let currentTerrainWidth = null;
 
 // RHI specific state
 let rhiStartAzimuth = 0;
@@ -198,6 +200,9 @@ function renderAHI() {
 
     svgContent += `<g clip-path="url(#plotClip)">`;
 
+    // Draw terrain FIRST (behind everything)
+    svgContent += renderTerrain(vb);
+
     // Grid lines
     const yTicks = [0, 5, 10, 15];
     for (const yk of yTicks) {
@@ -242,8 +247,7 @@ function renderAHI() {
                       data-gate-idx="${gateIdx}"
                       data-value="${gate.value}"
                       data-range="${rangeKm}"
-                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
-  ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
                       fill="${color}"
                       stroke="none"
                   />`;
@@ -256,17 +260,14 @@ function renderAHI() {
         const rangesReversed = [...rangesKm].reverse();
         const bottomPath = buildPath(rangesReversed, bottomReversed, vb);
 
-        svgContent += `<polygon class="beam-outline" points="${topPath} ${bottomPath}" fill="none"
-  stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
+        svgContent += `<polygon class="beam-outline" points="${topPath} ${bottomPath}" fill="none" stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
 
         svgContent += `</g>`;
     }
 
     // Crosshairs
-    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
-  />`;
-    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
-  />`;
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none" />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none" />`;
 
     svgContent += `</g>`;
     svg.innerHTML = svgContent;
@@ -364,6 +365,48 @@ function renderRHI() {
 
     svgContent += `</g>`;
     svg.innerHTML = svgContent;
+}
+
+function renderTerrain(vb) {
+    if (!currentTerrain || !currentTerrainWidth) return '';
+
+    let svgContent = '';
+
+    // Build terrain path
+    // Terrain values are in meters, we need km for the graph
+    // terrainWidth is the number of range bins
+    const rangeStepKm = MAX_RANGE_KM / currentTerrainWidth;
+
+    let pathPoints = [];
+
+    // Start at bottom-left
+    pathPoints.push(`0,${vb.h}`);
+
+    // Add terrain profile points
+    for (let i = 0; i < currentTerrain.length && i < currentTerrainWidth; i++) {
+        const rangeKm = i * rangeStepKm;
+        if (rangeKm > MAX_RANGE_KM) break;
+
+        const heightKm = currentTerrain[i] / 1000; // Convert meters to km
+        const p = dataToSvgAHI(rangeKm, heightKm, vb);
+        pathPoints.push(`${p.x},${p.y}`);
+    }
+
+    // End at bottom-right
+    const lastX = (Math.min(currentTerrain.length * rangeStepKm, MAX_RANGE_KM) / MAX_RANGE_KM) * vb.w;
+    pathPoints.push(`${lastX},${vb.h}`);
+
+    // Close the path
+    pathPoints.push(`0,${vb.h}`);
+
+    svgContent += `<polygon
+          class="terrain-fill"
+          points="${pathPoints.join(' ')}"
+          fill="#C4A484"
+          fill-opacity="0.7"
+      />`;
+
+    return svgContent;
 }
 
 function render() {
@@ -582,17 +625,30 @@ container.addEventListener('mouseleave', () => {
 document.addEventListener('profile-data-ready', (e) => {
     if (currentMode !== 'AHI') return;
 
-    const { profileData, azimuth, moment, units, palette, minValue, maxValue } = e.detail;
+    const { profileData, azimuth, moment, units, palette, minValue, maxValue, terrain, terrainWidth } = e.detail;
 
     currentProfileData = profileData;
     currentPalette = palette;
     currentMinValue = minValue;
     currentMaxValue = maxValue;
     currentUnits = units;
+    currentTerrain = terrain;
+    currentTerrainWidth = terrainWidth;
 
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsAHI(elevationAngles);
-
+    document.addEventListener('overlay-cleared', () => {
+        currentProfileData = null;
+        currentPalette = null;
+        currentMinValue = 0;
+        currentMaxValue = 100;
+        currentUnits = '';
+        beams = [];
+        currentTerrain = null;
+        currentTerrainWidth = null;
+        render();
+        renderAxes();
+    });
     render();
     renderAxes();
 });
@@ -625,6 +681,8 @@ document.addEventListener('overlay-cleared', () => {
     currentMaxValue = 100;
     currentUnits = '';
     beams = [];
+    currentTerrain = null;
+    currentTerrainWidth = null;
     render();
     renderAxes();
 });

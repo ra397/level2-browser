@@ -30,9 +30,10 @@ let currentMoment = 'REF';
 let currentStation= null;
 let currentRadarData = null;
 let currentProfile = null;
+let currentTerrainData = null;
 
 // Fetch station metadata once at startup
-fetch('/data/nexrad.json')
+fetch(`${import.meta.env.BASE_URL}data/nexrad.json`)
     .then(r => r.json())
     .then(data => {
         globalThis.nexradStations = data;
@@ -146,6 +147,9 @@ document.addEventListener('decode-requested', async (e) => {
             currentMoment = moments[0];
         }
 
+        // Fetch terrain data for this station
+        currentTerrainData = await fetchTerrainProfile(station.lat, station.lng);
+
         visualize(station);
 
         document.dispatchEvent(new CustomEvent('decode-success', {
@@ -234,6 +238,7 @@ document.addEventListener('clear-overlay', () => {
     radar = null;
     currentRadarData = null;
     currentStation = null;
+    currentTerrainData = null;
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
 });
 
@@ -314,6 +319,9 @@ function gatherProfileData(azimuth) {
         });
     }
 
+    // Get terrain slice for this azimuth
+    const terrainSlice = getTerrainSliceByAzimuth(azimuth);
+
     return {
         profileData,
         azimuth,
@@ -321,7 +329,9 @@ function gatherProfileData(azimuth) {
         units: config.units,
         palette: config.palette,
         minValue: config.minValue,
-        maxValue: config.maxValue
+        maxValue: config.maxValue,
+        terrain: terrainSlice,
+        terrainWidth: currentTerrainData ? currentTerrainData.width : null
     };
 }
 
@@ -416,6 +426,49 @@ function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
         minValue: config.minValue,
         maxValue: config.maxValue
     };
+}
+
+async function fetchTerrainProfile(lat, lng) {
+    const url = `https://visualriver.net/api-wsr88/get-terrain?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+        }
+
+        const json = await response.json();
+        const { terrain, dtype, width } = json;
+
+        // Base64 decode the terrain string into binary
+        const binary = atob(terrain);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+
+        // dtype is uint16
+        const typedArray = new Uint16Array(bytes.buffer);
+
+        return {
+            terrainProfile: typedArray,
+            width: width
+        };
+
+    } catch (err) {
+        console.error("Failed to fetch terrain:", err);
+        return null;
+    }
+}
+
+function getTerrainSliceByAzimuth(azimuth) {
+    if (!currentTerrainData) return null;
+
+    const normalizedAzimuth = ((Math.round(azimuth) % 360) + 360) % 360;
+    const start = normalizedAzimuth * currentTerrainData.width;
+    const stop = start + currentTerrainData.width;
+    return currentTerrainData.terrainProfile.slice(start, stop);
 }
 
 document.addEventListener('profile-azimuth-changed', (e) => {
