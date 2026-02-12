@@ -22,6 +22,8 @@ let currentUnits = '';
 let beams = [];
 let currentTerrain = null;
 let currentTerrainWidth = null;
+let stationElevationKm = 0;
+let currentAzimuth = 0;
 
 // RHI specific state
 let rhiStartAzimuth = 0;
@@ -49,6 +51,7 @@ function createModeSwitcher() {
                   RHI
               </label>
           </div>
+          <div class="profile-info" id="profileInfo"></div>
       `;
 
     titleBar.addEventListener('change', (e) => {
@@ -58,11 +61,23 @@ function createModeSwitcher() {
             beams = [];
             render();
             renderAxes();
+            updateProfileInfo();
             document.dispatchEvent(new CustomEvent('profile-mode-changed', {
                 detail: { mode: currentMode }
             }));
         }
     });
+}
+
+function updateProfileInfo() {
+    const profileInfo = document.getElementById('profileInfo');
+    if (!profileInfo) return;
+
+    if (currentMode === 'AHI') {
+        profileInfo.textContent = `Azimuth: ${currentAzimuth.toFixed(1)}°`;
+    } else {
+        profileInfo.textContent = `Range: ${rhiRangeKm.toFixed(2)} km`;
+    }
 }
 
 // ─── Beam height calculation ───
@@ -163,9 +178,11 @@ function valueToColor(value, palette, minValue, maxValue) {
 
 function computeBeamsAHI(elevationAngles) {
     return elevationAngles.map((elev, idx) => {
-        const center = calculateBeamHeights(groundRanges, elev, STATION_ELEVATION).map(h => h / 1000);
-        const top = calculateBeamHeights(groundRanges, elev + HALF_BW, STATION_ELEVATION).map(h => h / 1000);
-        const bottom = calculateBeamHeights(groundRanges, elev - HALF_BW, STATION_ELEVATION).map(h => h / 1000);
+        const center = calculateBeamHeights(groundRanges, elev, stationElevationKm * 1000).map(h => h / 1000);
+        const top = calculateBeamHeights(groundRanges, elev + HALF_BW, stationElevationKm * 1000).map(h => h /
+            1000);
+        const bottom = calculateBeamHeights(groundRanges, elev - HALF_BW, stationElevationKm * 1000).map(h => h /
+            1000);
         return { elev, center, top, bottom, idx };
     });
 }
@@ -247,27 +264,27 @@ function renderAHI() {
                       data-gate-idx="${gateIdx}"
                       data-value="${gate.value}"
                       data-range="${rangeKm}"
-                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                      points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+  ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
                       fill="${color}"
                       stroke="none"
                   />`;
             }
         }
 
-        // Beam outline
-        const topPath = buildPath(rangesKm, beam.top, vb);
-        const bottomReversed = [...beam.bottom].reverse();
-        const rangesReversed = [...rangesKm].reverse();
-        const bottomPath = buildPath(rangesReversed, bottomReversed, vb);
-
-        svgContent += `<polygon class="beam-outline" points="${topPath} ${bottomPath}" fill="none" stroke="rgba(100,100,100,0.3)" stroke-width="0.5" />`;
+        // Beam center line
+        const centerPath = buildPath(rangesKm, beam.center, vb);
+        svgContent += `<polyline class="beam-center" points="${centerPath}" fill="none"
+  stroke="rgba(50,50,50,0.5)" stroke-width="0.5" />`;
 
         svgContent += `</g>`;
     }
 
     // Crosshairs
-    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none" />`;
-    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none" />`;
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
+  />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
+  />`;
 
     svgContent += `</g>`;
     svg.innerHTML = svgContent;
@@ -421,17 +438,24 @@ function render() {
 function renderAxesAHI() {
     const yLabels = document.getElementById('yLabels');
     const xLabels = document.getElementById('xLabels');
+    const yTitle = document.querySelector('.y-axis-title');
+    const xTitle = document.querySelector('.x-axis-title');
 
     const yTicks = [15, 10, 5, 0];
-    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v} km</span>`).join('');
+    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
 
     const xTicks = [0, 50, 100, 150, 200, 230];
     xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
+
+    if (yTitle) yTitle.textContent = 'Height (km)';
+    if (xTitle) xTitle.textContent = 'Ground Range (km)';
 }
 
 function renderAxesRHI() {
     const yLabels = document.getElementById('yLabels');
     const xLabels = document.getElementById('xLabels');
+    const yTitle = document.querySelector('.y-axis-title');
+    const xTitle = document.querySelector('.x-axis-title');
 
     // Y-axis: elevation angles
     if (beams.length > 0) {
@@ -452,6 +476,9 @@ function renderAxesRHI() {
         xTicks.push(((rhiStartAzimuth + i) % 360).toFixed(0));
     }
     xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}°</span>`).join('');
+
+    if (yTitle) yTitle.textContent = 'Elevation Angle (°)';
+    if (xTitle) xTitle.textContent = 'Azimuth (°)';
 }
 
 function renderAxes() {
@@ -466,17 +493,22 @@ function renderAxes() {
 function findNearestBeamAndGateAHI(rangeKm, heightKm) {
     let bestBeam = null;
     let bestGate = null;
+    let bestDist = Infinity;
 
     const rangeIdx = Math.round(rangeKm);
     if (rangeIdx < 0 || rangeIdx > RANGE_STEPS) return { beam: null, gate: null };
 
+    // Find beam with the closest center line
     for (let beamIdx = 0; beamIdx < beams.length; beamIdx++) {
         const beam = beams[beamIdx];
+        const center = beam.center[rangeIdx];
         const top = beam.top[rangeIdx];
         const bottom = beam.bottom[rangeIdx];
-        const center = beam.center[rangeIdx];
 
-        if (heightKm >= bottom && heightKm <= top) {
+        const distToCenter = Math.abs(heightKm - center);
+
+        if (distToCenter < bestDist) {
+            bestDist = distToCenter;
             bestBeam = { ...beam, beamIdx, centerH: center, topH: top, bottomH: bottom };
 
             if (currentProfileData && currentProfileData[beamIdx]) {
@@ -486,7 +518,6 @@ function findNearestBeamAndGateAHI(rangeKm, heightKm) {
                     bestGate = { ...gates[gateIdx], gateIdx };
                 }
             }
-            break;
         }
     }
 
@@ -634,23 +665,17 @@ document.addEventListener('profile-data-ready', (e) => {
     currentUnits = units;
     currentTerrain = terrain;
     currentTerrainWidth = terrainWidth;
+    currentAzimuth = azimuth;
+
+    // Get station elevation from first terrain value (convert meters to km)
+    stationElevationKm = (terrain && terrain.length > 0) ? terrain[0] / 1000 : 0;
 
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsAHI(elevationAngles);
-    document.addEventListener('overlay-cleared', () => {
-        currentProfileData = null;
-        currentPalette = null;
-        currentMinValue = 0;
-        currentMaxValue = 100;
-        currentUnits = '';
-        beams = [];
-        currentTerrain = null;
-        currentTerrainWidth = null;
-        render();
-        renderAxes();
-    });
+
     render();
     renderAxes();
+    updateProfileInfo();
 });
 
 document.addEventListener('profile-rhi-data-ready', (e) => {
@@ -672,6 +697,7 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
 
     render();
     renderAxes();
+    updateProfileInfo();
 });
 
 document.addEventListener('overlay-cleared', () => {
@@ -683,6 +709,7 @@ document.addEventListener('overlay-cleared', () => {
     beams = [];
     currentTerrain = null;
     currentTerrainWidth = null;
+    stationElevationKm = 0;
     render();
     renderAxes();
 });

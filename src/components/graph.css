@@ -162,3 +162,9 @@
 .mode-switcher input[type="radio"] {
     cursor: pointer;
 }
+
+.profile-info {
+    font-size: 1rem;
+    color: #5a6a8a;
+    font-weight: 500;
+}
