@@ -9,6 +9,11 @@
 <body>
     <div id="map"></div>
 
+    <div id="mode-toggle">
+        <button id="mode-mrms" class="mode-btn active">MRMS</button>
+        <button id="mode-level2" class="mode-btn">Level II</button>
+    </div>
+
     <div id="sidebar">
         <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>
         <span class="sidebar-item" data-menu="level2-menu">Level II</span>
@@ -45,14 +50,27 @@
     </div>
 
     <div id="level2-menu" class="hidden">
-        <ol style="padding-left: 20px; font-size: 14px; color: #333;">
-            <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>
-            <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>
-            <li>Paste that link into the box below and click <strong>View</strong>.</li>
-        </ol>
+        <div id="level2-instructions">
+            <ol style="padding-left: 20px; font-size: 14px; color: #333;">
+                <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>
+                <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>
+                <li>Paste that link into the box below and click <strong>View</strong>.</li>
+            </ol>
 
-        <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" spellcheck="false">
-        <button class="submit-btn" id="decodeBtn">View</button>
+            <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" spellcheck="false">
+            <button class="submit-btn" id="decodeBtn">View</button>
+        </div>
+
+        <div id="level2-radar-selection" style="display: none;">
+            <div class="selected-radar-info">
+                <span class="selected-radar-label">Selected Radar:</span>
+                <span id="selectedRadarId" class="selected-radar-id">--</span>
+            </div>
+            <button class="submit-btn" id="viewLevel2Btn">View Level II</button>
+            <div id="level2-loading" style="display: none; font-size: 12px; color: #666; margin-top: 8px;">
+                Loading...
+            </div>
+        </div>
 
         <div id="sweepContainer" class="section-container" style="display: none;">
             <div class="section-header">

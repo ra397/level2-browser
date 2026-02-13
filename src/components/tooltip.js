@@ -68,6 +68,18 @@ function getTooltipOverlay() {
         destroy() {
             this.setMap(null);
         }
+
+        hide() {
+            if (this.#div) {
+                this.#div.style.display = 'none';
+            }
+        }
+
+        show() {
+            if (this.#div) {
+                this.#div.style.display = 'flex';
+            }
+        }
     };
 
     return TooltipOverlay;
@@ -199,5 +211,13 @@ export const tooltipManager = {
     clearAll() {
         openTooltips.forEach(tooltip => tooltip.overlay.destroy());
         openTooltips.clear();
+    },
+
+    hideAll() {
+        openTooltips.forEach(tooltip => tooltip.overlay.hide());
+    },
+
+    showAll() {
+        openTooltips.forEach(tooltip => tooltip.overlay.show());
     }
 };

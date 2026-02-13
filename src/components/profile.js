@@ -389,4 +389,26 @@ export class Profile {
     destroy() {
         this._clearMapObjects();
     }
+
+    hide() {
+        if (this.circle) this.circle.setMap(null);
+        if (this.line) this.line.setMap(null);
+        if (this.line1) this.line1.setMap(null);
+        if (this.line2) this.line2.setMap(null);
+        if (this.arc) this.arc.setMap(null);
+        if (this.dragMarker) this.dragMarker.setMap(null);
+        if (this.arcDragMarker) this.arcDragMarker.setMap(null);
+        if (this.rotateDragMarker) this.rotateDragMarker.setMap(null);
+    }
+
+    show() {
+        if (this.circle) this.circle.setMap(this.map);
+        if (this.line) this.line.setMap(this.map);
+        if (this.line1) this.line1.setMap(this.map);
+        if (this.line2) this.line2.setMap(this.map);
+        if (this.arc) this.arc.setMap(this.map);
+        if (this.dragMarker) this.dragMarker.setMap(this.map);
+        if (this.arcDragMarker) this.arcDragMarker.setMap(this.map);
+        if (this.rotateDragMarker) this.rotateDragMarker.setMap(this.map);
+    }
 }

@@ -3,9 +3,15 @@ import './components/sidebar.js';
 import "./components/map.js";
 import './components/timeline/timeline.js';
 import './components/menu.js';
+import './components/mrms-menu.js';
 import './components/player/player.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
+
+// MRMS modules
+import './mrms/api.js';
+import './mrms/display.js';
+import './components/mode-toggle.js';
 import {
     buildColorLUT, getRadarMapOverlay,
     REF_PALETTE, RHO_PALETTE, CFP_PALETTE, PHI_PALETTE,
@@ -176,9 +182,8 @@ document.addEventListener('sweep-changed', (e) => {
         currentMoment = moments.includes('REF') ? 'REF' : moments[0];
     }
 
-    const radarId = parseRadarId(document.getElementById('urlInput').value);
-    const station = findStation(radarId);
-    if (station) visualize(station);
+    // Use stored station instead of parsing from URL
+    if (currentStation) visualize(currentStation);
 
     document.dispatchEvent(new CustomEvent('moments-updated', {
         detail: {
@@ -192,9 +197,8 @@ document.addEventListener('moment-changed', (e) => {
     const { moment } = e.detail;
     currentMoment = moment;
 
-    const radarId = parseRadarId(document.getElementById('urlInput').value);
-    const station = findStation(radarId);
-    if (station) visualize(station);
+    // Use stored station instead of parsing from URL
+    if (currentStation) visualize(currentStation);
 });
 
 // Map click handler for tooltips
@@ -243,6 +247,32 @@ document.addEventListener('clear-overlay', () => {
     currentStation = null;
     currentTerrainData = null;
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
+});
+
+// Mode switching - show/hide Level II overlay
+document.addEventListener('mode-changed', (e) => {
+    const { mode } = e.detail;
+
+    if (mode === 'level2') {
+        // Show Level II overlay if we have data
+        if (radar && currentStation) {
+            visualize(currentStation);
+            tooltipManager.showAll();
+            if (currentProfile) {
+                currentProfile.show();
+            }
+        }
+    } else {
+        // Hide Level II overlay when switching away
+        if (radarOverlay) {
+            radarOverlay.setMap(null);
+        }
+        tooltipManager.hideAll();
+        if (currentProfile) {
+            currentProfile.hide();
+        }
+        hideLegend();
+    }
 });
 
 function gatherProfileData(azimuth) {

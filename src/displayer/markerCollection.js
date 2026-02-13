@@ -4,6 +4,9 @@ export class MarkerCollection {
         this.markers = []; // { marker (google.maps.Marker), currentSize, properties }
         this.size = 2.5;
         this.color = "green";
+        this.clickHandler = null;
+        this.selectedMarker = null;
+        this.selectedColor = "blue";
 
         this.map.addListener("idle", () => {
             this.#updateVisibleMarkers();
@@ -54,8 +57,59 @@ export class MarkerCollection {
             properties: properties,
         };
 
+        // Add click listener
+        marker.addListener('click', () => {
+            if (this.clickHandler) {
+                this.clickHandler(markerObj);
+            }
+        });
+
         this.markers.push(markerObj);
         return markerObj;
+    }
+
+    onClick(handler) {
+        this.clickHandler = handler;
+    }
+
+    #createSelectedIcon() {
+        const s = this.size * 2;
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}">
+            <circle cx="${this.size}" cy="${this.size}"
+                    r="${this.size - 1}" fill="${this.selectedColor}" />
+          </svg>
+        `;
+
+        return {
+            url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+            size: new google.maps.Size(s, s),
+            anchor: new google.maps.Point(this.size, this.size),
+        };
+    }
+
+    select(markerObj) {
+        // Deselect previous
+        if (this.selectedMarker) {
+            this.selectedMarker.marker.setIcon(this.#createIcon());
+        }
+
+        // Select new
+        this.selectedMarker = markerObj;
+        if (markerObj) {
+            markerObj.marker.setIcon(this.#createSelectedIcon());
+        }
+    }
+
+    getSelected() {
+        return this.selectedMarker;
+    }
+
+    clearSelection() {
+        if (this.selectedMarker) {
+            this.selectedMarker.marker.setIcon(this.#createIcon());
+            this.selectedMarker = null;
+        }
     }
 
     setColor(color) {
