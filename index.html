@@ -9,6 +9,11 @@
 <body>
     <div id="map"></div>
 
+    <div id="sidebar">
+        <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>
+        <span class="sidebar-item" data-menu="level2-menu">Level II</span>
+    </div>
+
     <div id="timeline-wrapper">
         <div id="timeline-zoom-controls">
             <button id="zoom-in-btn" aria-label="Zoom in">+</button>
@@ -23,7 +28,23 @@
         </div>
     </div>
 
-    <div id="menu">
+    <div id="mrms-menu" class="hidden">
+        <div class="menu-header">
+            <h2>MRMS Reflectivity</h2>
+        </div>
+        <div id="product-menu-container" class="layers-list">
+            <label class="product-radio-item">
+                <input type="radio" name="product_selection" value="MergedBaseReflectivity_00.50">
+                <span>Base Reflectivity</span>
+            </label>
+            <label class="product-radio-item">
+                <input type="radio" name="product_selection" value="MergedBaseReflectivityQC_00.50">
+                <span>Base Reflectivity (Quality Control)</span>
+            </label>
+        </div>
+    </div>
+
+    <div id="level2-menu" class="hidden">
         <ol style="padding-left: 20px; font-size: 14px; color: #333;">
             <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>
             <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>

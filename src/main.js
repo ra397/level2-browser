@@ -1,4 +1,5 @@
 import './style.css';
+import './components/sidebar.js';
 import "./components/map.js";
 import './components/timeline/timeline.js';
 import './components/menu.js';

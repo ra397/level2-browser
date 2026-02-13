@@ -18,10 +18,10 @@ body {
     height: 100vh;
 }
 
-#menu {
+#level2-menu {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: 130px;
+    right: 110px;
 
     width: 40ch;
 
@@ -34,6 +34,24 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+#mrms-menu {
+    position: absolute;
+    top: 130px;
+    right: 110px;
+
+    background: var(--background-color);
+
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 15px;
+    padding: 0 1.5ch 1.5ch 1.5ch;
+}
+
+.layers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
 #urlInput {
@@ -226,4 +244,37 @@ body {
 
     margin-left: 4ch;
     margin-right: 4ch;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#sidebar {
+    position: absolute;
+    top: 15ch;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    text-align: center;
+
+    height: 6ch;
+    width: 12ch;
+
+    outline: 1px solid #ccc;
+    background: white;
+    padding: 0.3ch;
+}
+
+.sidebar-item:hover {
+    cursor: default;
+    user-select: none;
+    background: #eee;
 }
