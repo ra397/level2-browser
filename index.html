@@ -111,6 +111,32 @@
         </div>
     </div>
 
+    <div id="player-container">
+        <input id="player-seek" type="range" value="0" min="0" max="0">
+        <span class="player-btn" id="play-pause-btn" aria-label="Play">
+              <svg viewBox="0 0 24 24" stroke="none">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+          </span>
+        <span id="frame-timestamp"></span>
+        <div id="playback-settings-container">
+          <span class="player-btn" id="playback-settings-btn" aria-label="Settings">
+              <img src="icons/settings-icon.svg" alt="Settings">
+          </span>
+            <div id="playback-settings-menu" class="hidden">
+                <div class="playback-settings-section">
+                    <div class="playback-settings-section-title">Playback Speed</div>
+                    <div class="playback-settings-options">
+                        <button class="playback-settings-option" data-speed="0.5">0.5x</button>
+                        <button class="playback-settings-option selected" data-speed="1">1x</button>
+                        <button class="playback-settings-option" data-speed="2">2x</button>
+                        <button class="playback-settings-option" data-speed="3">3x</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>

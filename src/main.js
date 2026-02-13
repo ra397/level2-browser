@@ -3,6 +3,7 @@ import './components/sidebar.js';
 import "./components/map.js";
 import './components/timeline/timeline.js';
 import './components/menu.js';
+import './components/player/player.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
 import {
@@ -497,3 +498,30 @@ document.addEventListener('profile-mode-changed', (e) => {
         currentProfile.setMode(mode);
     }
 });
+
+export function extractTimestampFromKey(filename) {
+    const match = filename.match(/(\d{8})-(\d{6})\.grib2\.gz$/);
+
+    if (!match) {
+        throw new Error("No valid timestamp found in the input string.");
+    }
+
+    const [_, yyyymmdd, hhmmss] = match;
+
+    const year = yyyymmdd.substring(0, 4);
+    const month = yyyymmdd.substring(4, 6);
+    const day = yyyymmdd.substring(6, 8);
+
+    const hour = hhmmss.substring(0, 2);
+    const minute = hhmmss.substring(2, 4);
+    const second = hhmmss.substring(4, 6);
+
+    return new Date(Date.UTC(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute),
+        parseInt(second)
+    ));
+}

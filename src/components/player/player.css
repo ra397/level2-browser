@@ -1,0 +1,67 @@
+#player-container {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 10px;
+    align-items: center;
+    width: 40%;
+
+    background: white;
+    padding: 9px 12px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Seek bar spans full width on first row */
+#player-seek {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: #333;
+    cursor: pointer;
+    height: 4px;
+}
+
+/* Universal Button Styling */
+.player-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #333;
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.player-btn:hover {
+    opacity: 1;
+}
+
+.player-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+#play-pause-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Timestamp Display */
+#frame-timestamp {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Settings container pushed to far right */
+#playback-settings-container {
+    justify-self: end;
+}
