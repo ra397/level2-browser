@@ -1,5 +1,6 @@
 import './style.css';
 import "./components/map.js";
+import './components/timeline/timeline.js';
 import './components/menu.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";

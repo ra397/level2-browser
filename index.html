@@ -9,6 +9,20 @@
 <body>
     <div id="map"></div>
 
+    <div id="timeline-wrapper">
+        <div id="timeline-zoom-controls">
+            <button id="zoom-in-btn" aria-label="Zoom in">+</button>
+            <button id="zoom-out-btn" aria-label="Zoom out">−</button>
+        </div>
+        <div id="timeline-container">
+            <svg id="start-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='green'/></svg>
+            <svg id="stop-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='red'/></svg>
+            <svg id="current-frame-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='#3b82f6'/></svg>
+            <div id="line"></div>
+            <div id="timeline"></div>
+        </div>
+    </div>
+
     <div id="menu">
         <ol style="padding-left: 20px; font-size: 14px; color: #333;">
             <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>

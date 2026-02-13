@@ -1,0 +1,101 @@
+/* TODO: anywhere where we hardcode 15px should be dynamic instead */
+/* TODO: use inheritance to avoid potential naming conflicts */
+#timeline-container {
+    --unit-width: 15px;
+
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--unit-width);
+
+    position: relative;
+}
+
+#timeline-container #line {
+    flex-grow: 1;
+    outline: 1px solid black;
+    max-height: 0;
+    background-color: #000;
+}
+
+#timeline-container #timeline {
+    display: flex;
+    cursor: pointer;
+    user-select: none;
+    justify-content: space-evenly;
+}
+
+#timeline-container .timeline-unit {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    text-align: center;
+    max-width: var(--unit-width);
+
+    position: relative;
+
+    padding-top: 0.2rem;
+}
+
+/* ticks */
+#timeline-container .timeline-unit::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    outline: 1px solid black;
+    width: 0;
+    height: 0.25rem;
+    background-color: #000;
+}
+
+#timeline-container .timeline-unit.medium-tick::before {
+    height: 0.55rem;
+}
+
+#timeline-container .timeline-unit.long-tick::before {
+    height: 0.8rem;
+}
+
+#timeline-container .label-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    margin-top: 0.5rem;
+}
+
+#timeline-container .small-label {
+    font-size: 0.85rem;
+
+}
+
+#timeline-container .large-label {
+    font-size: 1.15rem;
+}
+
+/* Selection markers */
+#timeline-container #start-marker {
+    width: var(--unit-width);
+    height: var(--unit-width);
+
+    position: absolute;
+    top: 0;
+    display: none;
+}
+
+#timeline-container #stop-marker {
+    width: var(--unit-width);
+    height: var(--unit-width);
+
+    position: absolute;
+    top: 0;
+    display: none;
+}
+
+#timeline-container #current-frame-marker {
+    width: var(--unit-width);
+    height: var(--unit-width);
+    position: absolute;
+    top: 0;
+    display: none;
+}
