@@ -256,11 +256,14 @@ document.addEventListener('mode-changed', (e) => {
     if (mode === 'level2') {
         // Show Level II overlay if we have data
         if (radar && currentStation) {
-            visualize(currentStation);
+            visualize(currentStation)
             tooltipManager.showAll();
             if (currentProfile) {
                 currentProfile.show();
             }
+            // Re-show legend
+            const config = PRODUCT_CONFIG[currentMoment] || PRODUCT_CONFIG['REF'];
+            updateLegend(config.palette, config.units, config.labelStep || 1);
         }
     } else {
         // Hide Level II overlay when switching away

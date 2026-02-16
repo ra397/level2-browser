@@ -101,6 +101,7 @@ body {
 }
 
 #urlInput {
+    flex: 1;
     background: #F2F2F7;
     border: 1px solid transparent;
     border-radius: 12px;
@@ -114,6 +115,12 @@ body {
     background: #fff;
     border-color: #ccc;
     box-shadow: 0 0 0 3px rgba(204, 204, 204, 0.15);
+}
+
+.submit-container {
+    width: 100%;
+    display: flex;
+    gap: 8px;
 }
 
 .submit-btn {

@@ -1,3 +1,5 @@
+import {getCurrentFrameTime} from "../mrms/display.js";
+
 const decodeBtn = document.getElementById('decodeBtn');
 const urlInput = document.getElementById('urlInput');
 const sweepContainer = document.getElementById('sweepContainer');
@@ -158,7 +160,6 @@ viewLevel2Btn.addEventListener('click', async () => {
     }
 
     // Import getCurrentFrameTime from MRMS display
-    const { getCurrentFrameTime } = await import('../mrms/display.js');
     const frameTime = getCurrentFrameTime();
 
     if (!frameTime) {
