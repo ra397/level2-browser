@@ -1,5 +1,5 @@
 // MRMS Display Module - renders MRMS data on the map
-
+import { mapReady } from "../components/map.js";
 import { RasterGenerator } from "./rasterGenerator.js";
 import { overlayInfo, getProductByS3Name, buildColorMap, scaleColorMap } from "./config.js";
 import { getMRMSOverlay } from "./overlay.js";
@@ -22,7 +22,7 @@ const speedIntervals = {
 const imageCache = new Map();
 
 // Initialize overlay when map is ready
-window.addEventListener("mapReady", () => {
+mapReady.then(() => {
     const MRMSOverlay = getMRMSOverlay();
     overlay = new MRMSOverlay(overlayInfo.bbox, map);
     overlay.setSource(overlayInfo.transparentImgSrc);
