@@ -46,7 +46,7 @@ fetch(`${import.meta.env.BASE_URL}data/nexrad.json`)
     .then(r => r.json())
     .then(data => {
         globalThis.nexradStations = data;
-        window.dispatchEvent(new CustomEvent('nexradStationsReady', { detail: data }));
+        document.dispatchEvent(new CustomEvent('nexradStationsReady', { detail: data }));
     });
 
 function parseRadarId(url) {

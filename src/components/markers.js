@@ -1,12 +1,13 @@
 import {MarkerCollection} from "../displayer/markerCollection.js";
+import {mapReady} from "./map.js";
 
 // NEXRAD markers
 let nexradMarkers = null;
 
-window.addEventListener("mapReady",() => {
+mapReady.then(() => {
     nexradMarkers = new MarkerCollection(map);
 
-    window.addEventListener('nexradStationsReady', (e) => {
+    document.addEventListener('nexradStationsReady', (e) => {
         const stations = e.detail;
         for (const station of stations) {
             nexradMarkers.add(station.lat, station.lng, {
