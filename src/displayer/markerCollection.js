@@ -6,7 +6,7 @@ export class MarkerCollection {
         this.color = "green";
         this.clickHandler = null;
         this.selectedMarker = null;
-        this.selectedColor = "blue";
+        this.selectedColor = "#FFED29";
 
         this.map.addListener("idle", () => {
             this.#updateVisibleMarkers();
