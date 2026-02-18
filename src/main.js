@@ -123,6 +123,8 @@ function visualize(station) {
 document.addEventListener('decode-requested', async (e) => {
     const { url } = e.detail;
 
+    document.dispatchEvent(new CustomEvent('overlay-cleared'));
+
     tooltipManager.clearAll();
 
     if (currentProfile !== null) {
