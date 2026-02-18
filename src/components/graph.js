@@ -1,5 +1,4 @@
 import './graph.css';
-import {DragContainer, draggerClassList} from "./draggable.js";
 
 // ─── Constants ───
 const EARTH_RADIUS = 6_371_000;
@@ -881,7 +880,3 @@ createModeSwitcher();
 initFoldButton();
 renderAxes();
 window.addEventListener('resize', render);
-
-// Make the profile graph draggable
-const graphContainerEl = document.querySelector('.graph-wrapper');
-const dragContainer = new DragContainer(graphContainerEl, draggerClassList);
