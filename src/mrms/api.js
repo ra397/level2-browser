@@ -92,6 +92,11 @@ async function fetchData() {
             }
         }
 
+        if (files_to_fetch.length === 0) {
+            alert("No MRMS data is available for the selected time interval");
+            return;
+        }
+
         // Sort files by timestamp
         files_to_fetch.sort((a, b) => {
             const timestampA = extractTimestampFromKey(a).toISOString();
