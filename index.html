@@ -47,6 +47,19 @@
                 <span>Base Reflectivity (Quality Control)</span>
             </label>
         </div>
+        <div id="mrmsOverlayControls" class="section-container" style="display: none;">
+            <div class="section-header">
+                <span>Overlay</span>
+            </div>
+            <div class="overlay-controls-row">
+                <label class="opacity-label">
+                    Opacity
+                    <input type="range" id="mrmsOpacitySlider" min="0" max="1" step="0.05" value="1">
+                    <span id="mrmsOpacityValue">100%</span>
+                </label>
+                <button class="clear-btn" id="clearMrmsBtn">Clear</button>
+            </div>
+        </div>
     </div>
 
     <div id="level2-menu" class="hidden">

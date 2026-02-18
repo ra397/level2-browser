@@ -125,6 +125,14 @@ document.addEventListener('mrms-display-file', async event => {
     }
 });
 
+// Opacity changed
+document.addEventListener('mrms-opacity-changed', (e) => {
+    const { opacity } = e.detail;
+    if (overlay) {
+        overlay.setOpacity(opacity);
+    }
+});
+
 document.addEventListener("mrms-clear", () => {
     currentIndex = 0;
     pause();
