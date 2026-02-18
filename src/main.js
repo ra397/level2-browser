@@ -451,6 +451,9 @@ function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
         });
     }
 
+    const terrainSlice = getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm);
+    const stationElevation = currentTerrainData ? currentTerrainData.terrainProfile[0] : 0;
+
     return {
         profileData,
         startAzimuth,
@@ -460,7 +463,9 @@ function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
         units: config.units,
         palette: config.palette,
         minValue: config.minValue,
-        maxValue: config.maxValue
+        maxValue: config.maxValue,
+        terrain: terrainSlice,
+        stationElevation: stationElevation
     };
 }
 
@@ -505,6 +510,34 @@ function getTerrainSliceByAzimuth(azimuth) {
     const start = normalizedAzimuth * currentTerrainData.width;
     const stop = start + currentTerrainData.width;
     return currentTerrainData.terrainProfile.slice(start, stop);
+}
+
+function getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm) {
+    if (!currentTerrainData) return null;
+
+    // Clamp range index to valid bounds
+    const rangeIndex = Math.min(Math.round(rangeKm), currentTerrainData.width - 1);
+
+    // Calculate slice width (handling wraparound)
+    const sliceWidth = endAzimuth >= startAzimuth
+        ? endAzimuth - startAzimuth
+        : (360 - startAzimuth) + endAzimuth;
+
+    const terrainValues = [];
+
+    // Sample terrain at this range for each azimuth in the slice
+    for (let i = 0; i <= sliceWidth; i++) {
+        const az = ((startAzimuth + i) % 360 + 360) % 360;
+        const normalizedAz = Math.round(az) % 360;
+        // Terrain data layout: [azimuth * width + rangeIndex]
+        const index = normalizedAz * currentTerrainData.width + rangeIndex;
+        terrainValues.push({
+            azimuth: az,
+            elevation: currentTerrainData.terrainProfile[index] || 0
+        });
+    }
+
+    return terrainValues;
 }
 
 document.addEventListener('profile-azimuth-changed', (e) => {

@@ -4,7 +4,7 @@
     gap: 4px;
     height: 800px;
     position: absolute;
-    top: 7ch;
+    top: 10ch;
     left: 10px;
     backdrop-filter: blur(10px);
     background: rgba(235, 232, 232, 0.6);
