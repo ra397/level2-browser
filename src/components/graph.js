@@ -698,11 +698,26 @@ container.addEventListener('mousemove', (e) => {
                 valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
             }
 
+            // Calculate ASL and AGL
+            const aslKm = heightKm;
+            let aglKm = heightKm;
+
+            if (currentAHITerrain && currentTerrainWidth) {
+                const rangeStepKm = MAX_RANGE_KM / currentTerrainWidth;
+                const terrainIdx = Math.min(Math.floor(rangeKm / rangeStepKm), currentAHITerrain.length - 1);
+                if (terrainIdx >= 0 && currentAHITerrain[terrainIdx] !== undefined) {
+                    const terrainKm = currentAHITerrain[terrainIdx] / 1000;
+                    aglKm = heightKm - terrainKm;
+                }
+            }
+
             tooltip.innerHTML = `
-                  <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
-                  <div>Range: ${rangeKm.toFixed(1)} km</div>
-                  <div>Value: ${valueDisplay}</div>
-              `;
+              <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
+              <div>Range: ${rangeKm.toFixed(1)} km</div>
+              <div>ASL: ${aslKm.toFixed(2)} km</div>
+              <div>AGL: ${aglKm.toFixed(2)} km</div>
+              <div>Value: ${valueDisplay}</div>
+          `;
         } else {
             tooltip.style.display = 'none';
         }
@@ -712,7 +727,7 @@ container.addEventListener('mousemove', (e) => {
             : (360 - rhiStartAzimuth) + rhiEndAzimuth;
 
         const azimuthOffset = (mx / vb.w) * sliceWidth;
-        const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;  // Same as AHI
+        const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;
         ({ beam, gate } = findNearestBeamAndGateRHI(azimuthOffset, heightKm));
 
         if (beam) {
@@ -725,13 +740,27 @@ container.addEventListener('mousemove', (e) => {
 
             const displayAz = ((rhiStartAzimuth + azimuthOffset) % 360).toFixed(1);
 
+            // ASL is the height at the mouse position
+            const aslKm = heightKm;
+
+            // Calculate AGL by subtracting terrain at this azimuth
+            let aglKm = aslKm;
+            if (currentRHITerrain && currentRHITerrain.length > 0) {
+                const terrainIdx = Math.min(Math.floor(azimuthOffset), currentRHITerrain.length - 1);
+                if (terrainIdx >= 0 && currentRHITerrain[terrainIdx]) {
+                    const terrainKm = currentRHITerrain[terrainIdx].elevation / 1000;
+                    aglKm = aslKm - terrainKm;
+                }
+            }
+
             tooltip.innerHTML = `
-          <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
-          <div>Azimuth: ${displayAz}°</div>
-          <div>Height: ${heightKm.toFixed(2)} km</div>
-          <div>Range: ${rhiRangeKm.toFixed(2)} km</div>
-          <div>Value: ${valueDisplay}</div>
-      `;
+              <div class="elev-label">${beam.elev.toFixed(1)}° Elevation</div>
+              <div>Azimuth: ${displayAz}°</div>
+              <div>Range: ${rhiRangeKm.toFixed(2)} km</div>
+              <div>ASL: ${aslKm.toFixed(2)} km</div>
+              <div>AGL: ${aglKm.toFixed(2)} km</div>
+              <div>Value: ${valueDisplay}</div>
+          `;
         } else {
             tooltip.style.display = 'none';
         }
