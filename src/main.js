@@ -17,7 +17,7 @@ import {
     REF_PALETTE, RHO_PALETTE, CFP_PALETTE, PHI_PALETTE,
     SW_PALETTE, VEL_PALETTE, ZDR_PALETTE, latLngToRadarIndex
 } from "./displayer/radarGl.js";
-import {updateLegend, hideLegend} from "./components/legend.js";
+import { updateLevel2Legend, hideLegend, clearLevel2Legend } from "./components/legend.js";
 import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
@@ -94,7 +94,7 @@ function visualize(station) {
     });
     radarOverlay.setOpacity(1);
 
-    updateLegend(config.palette, config.units, config.labelStep || 1);
+    updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
 
     // Handle profile - preserve state if it exists, otherwise create new
     if (currentProfile) {
@@ -243,7 +243,7 @@ document.addEventListener('clear-overlay', () => {
         currentProfile.destroy();
         currentProfile = null;
     }
-    hideLegend();
+    clearLevel2Legend();
     radar = null;
     currentRadarData = null;
     currentStation = null;
@@ -265,7 +265,7 @@ document.addEventListener('mode-changed', (e) => {
             }
             // Re-show legend
             const config = PRODUCT_CONFIG[currentMoment] || PRODUCT_CONFIG['REF'];
-            updateLegend(config.palette, config.units, config.labelStep || 1);
+            updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
         }
     } else {
         // Hide Level II overlay when switching away
@@ -276,7 +276,6 @@ document.addEventListener('mode-changed', (e) => {
         if (currentProfile) {
             currentProfile.hide();
         }
-        hideLegend();
     }
 });
 

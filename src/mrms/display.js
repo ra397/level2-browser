@@ -1,4 +1,5 @@
 // MRMS Display Module - renders MRMS data on the map
+import { updateMRMSLegend, clearMRMSLegend } from "../components/legend.js";
 import { mapReady } from "../components/map.js";
 import { RasterGenerator } from "./rasterGenerator.js";
 import { overlayInfo, getProductByS3Name, buildColorMap, scaleColorMap } from "./config.js";
@@ -88,6 +89,12 @@ document.addEventListener('mrms-files-total', event => {
 document.addEventListener('mrms-display-file', async event => {
     const { file_name, file_data, product_name, referenceValue, binaryScale, decimalScale } = event.detail;
 
+    // Update legend with product info
+    const product = getProductByS3Name(product_name);
+    if (product) {
+        updateMRMSLegend(product.thresholds, product.defaultColors, product.units);
+    }
+
     // Generate image
     const fileData = {
         data: file_data,
@@ -125,6 +132,7 @@ document.addEventListener("mrms-clear", () => {
     if (overlay) {
         overlay.hide();
     }
+    clearMRMSLegend();
     document.dispatchEvent(new CustomEvent('display-reset'));
 });
 
