@@ -21,6 +21,7 @@ import { updateLevel2Legend, hideLegend, clearLevel2Legend } from "./components/
 import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
+import {getCurrentMode} from "./components/mode-toggle.js";
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },
@@ -205,6 +206,8 @@ document.addEventListener('moment-changed', (e) => {
 
 // Map click handler for tooltips
 map.addListener('click', (e) => {
+    if (getCurrentMode() !== 'level2') return;
+
     if (!currentRadarData || !currentStation) return;
 
     const clickLat = e.latLng.lat();
