@@ -69,6 +69,12 @@ function setFolded(folded) {
         wrapper.style.width = '1400px';
         content.style.display = '';
         foldBtn.textContent = '−';
+
+        // Re-render after unfolding since dimensions are now available
+        requestAnimationFrame(() => {
+            render();
+            renderAxes();
+        });
     }
 
     // Update disabled state
@@ -807,8 +813,11 @@ document.addEventListener('profile-data-ready', (e) => {
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsAHI(elevationAngles);
 
+    const isNewData = !hasData;
     setHasData(true);
-    setFolded(false);
+    if (isNewData) {
+        setFolded(false);
+    }
 
     render();
     renderAxes();
@@ -836,8 +845,11 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsRHI(elevationAngles, rangeKm, stationElevM);
 
+    const isNewData = !hasData;
     setHasData(true);
-    setFolded(false);
+    if (isNewData) {
+        setFolded(false);
+    }
 
     render();
     renderAxes();
