@@ -5,6 +5,9 @@ const modeLevel2Btn = document.getElementById('mode-level2');
 
 let currentMode = 'mrms'; // 'mrms' or 'level2'
 
+const graphWrapper = document.querySelector('.graph-wrapper');
+const playerContainer = document.getElementById('player-container');
+
 // Track if each mode has data loaded
 let mrmsHasData = false;
 let level2HasData = false;
@@ -18,6 +21,16 @@ function setMode(mode) {
     // Update button states
     modeMrmsBtn.classList.toggle('active', mode === 'mrms');
     modeLevel2Btn.classList.toggle('active', mode === 'level2');
+
+    // Show/hide profile graph (Level II only)
+    if (graphWrapper) {
+        graphWrapper.style.display = mode === 'level2' ? '' : 'none';
+    }
+
+    // Show/hide player (MRMS only)
+    if (playerContainer) {
+        playerContainer.style.display = mode === 'mrms' ? '' : 'none';
+    }
 
     // Dispatch mode change event
     document.dispatchEvent(new CustomEvent('mode-changed', {
@@ -33,6 +46,8 @@ document.addEventListener('mrms-files-total', (e) => {
     if (e.detail.total > 0) {
         mrmsHasData = true;
         modeMrmsBtn.classList.add('has-data');
+        // Auto-switch to MRMS mode when data is loaded
+        setMode('mrms');
     }
 });
 
@@ -53,6 +68,14 @@ document.addEventListener('clear-overlay', () => {
     level2HasData = false;
     modeLevel2Btn.classList.remove('has-data');
 });
+
+// Set initial visibility based on default mode
+if (graphWrapper) {
+    graphWrapper.style.display = currentMode === 'level2' ? '' : 'none';
+}
+if (playerContainer) {
+    playerContainer.style.display = currentMode === 'mrms' ? '' : 'none';
+}
 
 // Export for other modules
 export function getCurrentMode() {
