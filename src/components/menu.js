@@ -29,6 +29,10 @@ let selectedRadar = null;
 let mrmsMode = false; // Track if we're in MRMS mode
 let currentSweeps = [];  // Array of sweep objects
 let currentSweepIndex = 0;
+let currentVolumeFiles = [];   // Array of file keys for current day
+let currentVolumeIndex = -1;   // Index of current file in the array
+let currentVolumeRadarId = null; // Radar ID for current volume list
+let currentVolumeDate = null;  // Date object for current volume list
 
 
 dpadUp.addEventListener('click', () => {
@@ -44,6 +48,18 @@ dpadDown.addEventListener('click', () => {
         const newIndex = currentSweepIndex - 1;
         document.dispatchEvent(new CustomEvent('sweep-changed', { detail: { index: newIndex } }));
     }
+});
+
+// D-pad left button - previous volume scan
+dpadLeft.addEventListener('click', async () => {
+    if (dpadLeft.disabled) return;
+    await navigateToPreviousVolume();
+});
+
+// D-pad right button - next volume scan
+dpadRight.addEventListener('click', async () => {
+    if (dpadRight.disabled) return;
+    await navigateToNextVolume();
 });
 
 function updateSweepDisplay(sweeps, sweepIndex) {
@@ -102,7 +118,7 @@ momentList.addEventListener('change', (e) => {
 });
 
 // Listen: decode-success
-document.addEventListener('decode-success', (e) => {
+document.addEventListener('decode-success', async (e) => {
     const { radarId, sweeps, moments, currentMoment, url } = e.detail;
 
     level2Instructions.style.display = 'none';
@@ -128,6 +144,9 @@ document.addEventListener('decode-success', (e) => {
         } else {
             volumeSweepTimestampEl.textContent = '--';
         }
+
+        // Update volume file list for left-right navigation
+        await updateVolumeFileList(radarId, url);
     }
 });
 
@@ -188,7 +207,7 @@ document.addEventListener('radar-selected', (e) => {
     selectedRadarIdEl.textContent = selectedRadar.id;
 });
 
-document.addEventListener('radar-focused', (e) => {
+document.addEventListener('radar-focused', async (e) => {
     const { radarId, radar } = e.detail;
 
     if (!radar) {
@@ -198,6 +217,13 @@ document.addEventListener('radar-focused', (e) => {
         sweepContainer.style.display = 'none';
         momentContainer.style.display = 'none';
         overlayControls.style.display = 'none';
+
+        // Clear volume navigation state
+        currentVolumeFiles = [];
+        currentVolumeIndex = -1;
+        currentVolumeRadarId = null;
+        dpadLeft.disabled = true;
+        dpadRight.disabled = true;
         return;
     }
 
@@ -220,6 +246,11 @@ document.addEventListener('radar-focused', (e) => {
         opacityValue.textContent = `${Math.round(radar.opacity * 100)}%`;
 
         sweepContainer.style.display = '';
+
+        // Update volume file list for this radar
+        if (radar.url) {
+            await updateVolumeFileList(radarId, radar.url);
+        }
     }
 
     overlayControls.style.display = '';
@@ -274,6 +305,148 @@ viewLevel2Btn.addEventListener('click', async () => {
         level2Loading.style.display = 'none';
     }
 });
+
+async function fetchFilesForDate(radarId, date) {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+
+    const prefix = `${year}/${month}/${day}/${radarId}/`;
+    const listUrl = `https://unidata-nexrad-level2.s3.amazonaws.com/?list-type=2&delimiter=/&prefix=${prefix}`;
+
+    const response = await fetch(listUrl);
+    const xmlString = await response.text();
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+    const keyElements = xmlDoc.getElementsByTagName("Key");
+    const files = [];
+
+    for (let i = 0; i < keyElements.length; i++) {
+        const key = keyElements[i].textContent;
+        // Filter for actual data files (not MDM files)
+        if (key.includes('_V0') && !key.includes('_MDM')) {
+            files.push(key);
+        }
+    }
+
+    // Sort files by timestamp
+    files.sort((a, b) => {
+        const tsA = extractLevel2Timestamp(a);
+        const tsB = extractLevel2Timestamp(b);
+        if (!tsA || !tsB) return 0;
+        return tsA.getTime() - tsB.getTime();
+    });
+
+    return files;
+}
+
+async function updateVolumeFileList(radarId, currentUrl) {
+    const timestamp = extractLevel2Timestamp(currentUrl);
+    if (!timestamp) return;
+
+    currentVolumeRadarId = radarId;
+    currentVolumeDate = new Date(Date.UTC(
+        timestamp.getUTCFullYear(),
+        timestamp.getUTCMonth(),
+        timestamp.getUTCDate()
+    ));
+
+    currentVolumeFiles = await fetchFilesForDate(radarId, currentVolumeDate);
+
+    // Find current file index
+    const currentFileKey = currentUrl.replace('https://unidata-nexrad-level2.s3.amazonaws.com/', '');
+    currentVolumeIndex = currentVolumeFiles.indexOf(currentFileKey);
+
+    updateDpadLeftRightState();
+}
+
+function updateDpadLeftRightState() {
+    if (currentVolumeFiles.length === 0 || currentVolumeIndex === -1) {
+        dpadLeft.disabled = true;
+        dpadRight.disabled = true;
+        return;
+    }
+
+    // Left is always enabled (can go to previous day)
+    dpadLeft.disabled = false;
+    // Right is always enabled (can go to next day, unless we're at "now")
+    dpadRight.disabled = false;
+}
+
+async function navigateToPreviousVolume() {
+    if (currentVolumeIndex > 0) {
+        // Previous file in same day
+        currentVolumeIndex--;
+        const fileKey = currentVolumeFiles[currentVolumeIndex];
+        const url = `https://unidata-nexrad-level2.s3.amazonaws.com/${fileKey}`;
+        document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+    } else {
+        // Need to go to previous day
+        dpadLeft.disabled = true;
+        dpadRight.disabled = true;
+
+        const prevDate = new Date(currentVolumeDate);
+        prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+
+        const prevDayFiles = await fetchFilesForDate(currentVolumeRadarId, prevDate);
+
+        if (prevDayFiles.length > 0) {
+            currentVolumeDate = prevDate;
+            currentVolumeFiles = prevDayFiles;
+            currentVolumeIndex = prevDayFiles.length - 1; // Last file of previous day
+
+            const fileKey = currentVolumeFiles[currentVolumeIndex];
+            const url = `https://unidata-nexrad-level2.s3.amazonaws.com/${fileKey}`;
+            document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+        } else {
+            alert('No data available for the previous day');
+            updateDpadLeftRightState();
+        }
+    }
+}
+
+// Navigate to next volume scan
+async function navigateToNextVolume() {
+    if (currentVolumeIndex < currentVolumeFiles.length - 1) {
+        // Next file in same day
+        currentVolumeIndex++;
+        const fileKey = currentVolumeFiles[currentVolumeIndex];
+        const url = `https://unidata-nexrad-level2.s3.amazonaws.com/${fileKey}`;
+        document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+    } else {
+        // Need to go to next day
+        dpadLeft.disabled = true;
+        dpadRight.disabled = true;
+
+        const nextDate = new Date(currentVolumeDate);
+        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+        // Don't allow navigating to future dates
+        const now = new Date();
+        if (nextDate > now) {
+            alert('No future data available');
+            updateDpadLeftRightState();
+            return;
+        }
+
+        const nextDayFiles = await fetchFilesForDate(currentVolumeRadarId, nextDate);
+
+        if (nextDayFiles.length > 0) {
+            currentVolumeDate = nextDate;
+            currentVolumeFiles = nextDayFiles;
+            currentVolumeIndex = 0; // First file of next day
+
+            const fileKey = currentVolumeFiles[currentVolumeIndex];
+            const url = `https://unidata-nexrad-level2.s3.amazonaws.com/${fileKey}`;
+            document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+        } else {
+            alert('No data available for the next day');
+            updateDpadLeftRightState();
+        }
+    }
+}
 
 // Find the nearest Level II file to the given time
 async function findNearestLevel2File(radarId, targetTime) {
