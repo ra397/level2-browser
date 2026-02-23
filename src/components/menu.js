@@ -84,6 +84,9 @@ momentList.addEventListener('change', (e) => {
 document.addEventListener('decode-success', (e) => {
     const { sweeps, moments, currentMoment, url } = e.detail;
 
+    level2Instructions.style.display = 'none';
+    level2RadarSelection.style.display = 'block';
+
     decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
