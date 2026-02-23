@@ -3,12 +3,13 @@ export class Profile {
     #rangeKm = 50; // For RHI mode
     #sliceWidth = 15; // degrees
 
-    constructor(map, lat, lng, maxDistance_m) {
+    constructor(map, lat, lng, maxDistance_m, radarId = null) {
         this.map = map;
         this.lat = lat;
         this.lng = lng;
         this.maxDistance_m = maxDistance_m;
         this.currentAzimuth = 0;
+        this.radarId = radarId;
 
         this._setupAHI();
     }
@@ -356,7 +357,10 @@ export class Profile {
 
     _dispatchAzimuthChanged() {
         document.dispatchEvent(new CustomEvent('profile-azimuth-changed', {
-            detail: { azimuth: this.currentAzimuth }
+            detail: {
+                azimuth: this.currentAzimuth,
+                radarId: this.radarId,
+            }
         }));
     }
 
@@ -366,7 +370,8 @@ export class Profile {
                 startAzimuth: this.currentAzimuth,
                 endAzimuth: this.getEndAzimuth(),
                 rangeKm: this.#rangeKm,
-                sliceWidth: this.#sliceWidth
+                sliceWidth: this.#sliceWidth,
+                radarId: this.radarId,
             }
         }));
     }

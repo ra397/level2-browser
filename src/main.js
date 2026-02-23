@@ -22,6 +22,7 @@ import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
 import {getCurrentMode} from "./components/mode-toggle.js";
+import {extractLevel2Timestamp} from "./components/menu.js";
 import {setCloseTimeoutDisabled} from "./components/sidebar.js";
 
 const PRODUCT_CONFIG = {
@@ -34,14 +35,73 @@ const PRODUCT_CONFIG = {
     CFP: { palette: CFP_PALETTE, minValue: 0,   maxValue: 50, units: 'dB' },
 };
 
-let radar = null;
-let radarOverlay = null;
-let currentSweepIndex = 0;
-let currentMoment = 'REF';
-let currentStation= null;
-let currentRadarData = null;
-let currentProfile = null;
-let currentTerrainData = null;
+const radars = new Map();
+let activeRadarId = null;
+
+function createRadarState(id, station, radarDecoder, url, terrainData) {
+    return {
+        id,
+        station,
+        radar: radarDecoder,
+        overlay: null,
+        sweepIndex: 0,
+        moment: 'REF',
+        radarData: null,
+        profile: null,
+        terrainData,
+        url,
+        timestamp: null, // extracted from URL
+        opacity: 1.0
+    };
+}
+
+function getActiveRadar() {
+    return activeRadarId ? radars.get(activeRadarId) : null;
+}
+
+function setActiveRadar(radarId) {
+    const previousActiveId = activeRadarId;
+    activeRadarId = radarId;
+
+    // Hide previous active radar's profile
+    if (previousActiveId && previousActiveId !== radarId) {
+        const prevRadar = radars.get(previousActiveId);
+        if (prevRadar && prevRadar.profile) {
+            prevRadar.profile.hide();
+        }
+    }
+
+    // Show new active radar's profile
+    const activeRadar = radars.get(radarId);
+    if (activeRadar && activeRadar.profile) {
+        activeRadar.profile.show();
+    }
+
+    // Bring active radar's overlay to top (re-add to map)
+    if (activeRadar && activeRadar.overlay) {
+        activeRadar.overlay.setMap(null);
+        activeRadar.overlay.setMap(map);
+    }
+
+    // Update legend for active radar
+    if (activeRadar) {
+        const config = PRODUCT_CONFIG[activeRadar.moment] || PRODUCT_CONFIG['REF'];
+        updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
+    }
+
+    // Dispatch event for menu to update
+    document.dispatchEvent(new CustomEvent('radar-focused', {
+        detail: {
+            radarId,
+            radar: activeRadar
+        }
+    }));
+
+    // Refresh profile data for graph component
+    if (activeRadar && activeRadar.profile) {
+        refreshProfileData(radarId);
+    }
+}
 
 // Fetch station metadata once at startup
 fetch(`${import.meta.env.BASE_URL}data/nexrad.json`)
@@ -60,30 +120,47 @@ function findStation(radarId) {
     return nexradStations.find(s => s.id === radarId) || null;
 }
 
-function cleanupOverlay() {
-    if (radarOverlay) {
-        radarOverlay.setMap(null);
-        radarOverlay = null;
+function refreshProfileData(radarId) {
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.profile) return;
+
+    const profile = radarState.profile;
+    if (profile.getMode() === 'AHI') {
+        const data = gatherProfileData(radarId, profile.getAzimuth());
+        if (data) {
+            document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
+        }
+    } else {
+        const data = gatherRHIData(
+            radarId,
+            profile.getAzimuth(),
+            profile.getEndAzimuth(),
+            profile.getRangeKm()
+        );
+        if (data) {
+            document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
+        }
     }
 }
 
-function visualize(station) {
-    cleanupOverlay();
+function visualizeRadar(radarId) {
+    const radarState = radars.get(radarId);
+    if (!radarState) return;
 
-    const sweepIndex = currentSweepIndex;
-    const moment = currentMoment;
+    const { station, radar, sweepIndex, moment, terrainData } = radarState;
     const config = PRODUCT_CONFIG[moment] || PRODUCT_CONFIG['REF'];
     const radarData = radar.getData(sweepIndex, moment);
 
-    // Store for tooltip
-    currentRadarData = radarData;
-    currentStation = station;
+    radarState.radarData = radarData;
 
-    // update all tooltips
-    tooltipManager.updateAllTooltips(radarData, config.units, station.lat, station.lng);
+    // Clean up existing overlay for this radar
+    if (radarState.overlay) {
+        radarState.overlay.setMap(null);
+    }
 
+    // Create new overlay
     const RadarMapOverlay = getRadarMapOverlay();
-    radarOverlay = new RadarMapOverlay(map, (overlay) => {
+    radarState.overlay = new RadarMapOverlay(map, (overlay) => {
         const colors = buildColorLUT(config.palette, config.minValue, config.maxValue);
         overlay.setColors(colors);
         overlay.setRadarPosition(station.lat, station.lng, radar.sweeps[sweepIndex].elevation);
@@ -91,48 +168,37 @@ function visualize(station) {
             radarData.azimuths,
             radarData.ranges,
             radarData.data,
-            {minValue: config.minValue, maxValue: config.maxValue}
+            { minValue: config.minValue, maxValue: config.maxValue }
         );
     });
-    radarOverlay.setOpacity(1);
+    radarState.overlay.setOpacity(radarState.opacity);
 
-    updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
-
-    // Handle profile - preserve state if it exists, otherwise create new
-    if (currentProfile) {
-        // Profile exists, refresh the data
-        if (currentProfile.getMode() === 'AHI') {
-            const data = gatherProfileData(currentProfile.getAzimuth());
-            if (data) {
-                document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
-            }
-        } else {
-            const data = gatherRHIData(
-                currentProfile.getAzimuth(),
-                currentProfile.getEndAzimuth(),
-                currentProfile.getRangeKm()
-            );
-            if (data) {
-                document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
-            }
+    // Handle profile
+    if (radarState.profile) {
+        // Refresh profile data if this is the active radar
+        if (radarId === activeRadarId) {
+            refreshProfileData(radarId);
         }
     } else {
-        // No profile yet, create one
-        currentProfile = new Profile(map, station.lat, station.lng, 230e3);
+        // Create profile for this radar
+        radarState.profile = new Profile(map, station.lat, station.lng, 230e3, radarId);
+        radarState.profile.radarId = radarId; // Tag profile with radar ID
+
+        // Only show if this is the active radar
+        if (radarId !== activeRadarId) {
+            radarState.profile.hide();
+        }
+    }
+
+    // Update legend if this is the active radar
+    if (radarId === activeRadarId) {
+        updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
+        tooltipManager.updateAllTooltips(radarData, config.units, station.lat, station.lng);
     }
 }
 
 document.addEventListener('decode-requested', async (e) => {
     const { url } = e.detail;
-
-    document.dispatchEvent(new CustomEvent('overlay-cleared'));
-
-    tooltipManager.clearAll();
-
-    if (currentProfile !== null) {
-        currentProfile.destroy();
-        currentProfile = null;
-    }
 
     const radarId = parseRadarId(url);
     if (!radarId) {
@@ -146,39 +212,55 @@ document.addEventListener('decode-requested', async (e) => {
         return;
     }
 
+    // Check if this radar already exists - if so, clean it up first
+    const isNewRadar = !radars.has(radarId);
+    if (radars.has(radarId)) {
+        const existing = radars.get(radarId);
+        if (existing.overlay) existing.overlay.setMap(null);
+        if (existing.profile) existing.profile.destroy();
+        radars.delete(radarId);
+    }
+
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
         const rawData = await response.arrayBuffer();
-        radar = new NexradLevel2(rawData);
+        const radarDecoder = new NexradLevel2(rawData);
 
-        currentSweepIndex = 0;
-        currentMoment = 'REF';
+        const terrainData = await fetchTerrainProfile(station.lat, station.lng);
 
-        const moments = radar.getMomentsForSweep(currentSweepIndex);
-        if (!moments.includes(currentMoment)) {
-            currentMoment = moments[0];
-        }
+        // Create radar state
+        const radarState = createRadarState(radarId, station, radarDecoder, url, terrainData);
 
-        // Fetch terrain data for this station
-        currentTerrainData = await fetchTerrainProfile(station.lat, station.lng);
+        // Determine initial moment
+        const moments = radarDecoder.getMomentsForSweep(0);
+        radarState.moment = moments.includes('REF') ? 'REF' : moments[0];
 
-        visualize(station);
+        // Extract timestamp from URL
+        radarState.timestamp = extractLevel2Timestamp(url);
+
+        radars.set(radarId, radarState);
+
+        // Set as active and visualize
+        setActiveRadar(radarId);
+        visualizeRadar(radarId);
 
         document.dispatchEvent(new CustomEvent('decode-success', {
             detail: {
-                sweeps: radar.sweeps,
+                radarId,
+                sweeps: radarDecoder.sweeps,
                 moments: moments,
-                currentMoment: currentMoment,
-                url: url,
+                currentMoment: radarState.moment,
+                url: url
             }
         }));
 
-        // Zoom to the radar location
-        map.setCenter({ lat: station.lat, lng: station.lng });
-        map.setZoom(7);
+        // Only zoom for newly decoded radars
+        if (isNewRadar) {
+            map.setCenter({ lat: station.lat, lng: station.lng });
+            map.setZoom(7);
+        }
 
-        // Keep Level II menu active
         setCloseTimeoutDisabled(true);
     } catch (err) {
         document.dispatchEvent(new CustomEvent('decode-error', { detail: { message: err.message } }));
@@ -187,116 +269,182 @@ document.addEventListener('decode-requested', async (e) => {
 
 document.addEventListener('sweep-changed', (e) => {
     const { index } = e.detail;
-    currentSweepIndex = index;
+    const activeRadar = getActiveRadar();
+    if (!activeRadar) return;
 
-    const moments = radar.getMomentsForSweep(currentSweepIndex);
-    if (!moments.includes(currentMoment)) {
-        currentMoment = moments.includes('REF') ? 'REF' : moments[0];
+    activeRadar.sweepIndex = index;
+
+    const moments = activeRadar.radar.getMomentsForSweep(index);
+    if (!moments.includes(activeRadar.moment)) {
+        activeRadar.moment = moments.includes('REF') ? 'REF' : moments[0];
     }
 
-    // Use stored station instead of parsing from URL
-    if (currentStation) visualize(currentStation);
+    visualizeRadar(activeRadarId);
 
     document.dispatchEvent(new CustomEvent('moments-updated', {
         detail: {
             moments: moments,
-            currentMoment: currentMoment
+            currentMoment: activeRadar.moment
         }
     }));
 });
 
 document.addEventListener('moment-changed', (e) => {
     const { moment } = e.detail;
-    currentMoment = moment;
+    const activeRadar = getActiveRadar();
+    if (!activeRadar) return;
 
-    // Use stored station instead of parsing from URL
-    if (currentStation) visualize(currentStation);
+    activeRadar.moment = moment;
+    visualizeRadar(activeRadarId);
 });
+
 
 // Map click handler for tooltips
 map.addListener('click', (e) => {
     if (getCurrentMode() !== 'level2') return;
 
-    if (!currentRadarData || !currentStation) return;
-
     const clickLat = e.latLng.lat();
     const clickLng = e.latLng.lng();
 
-    const indices = latLngToRadarIndex(
-        clickLat, clickLng,
-        currentStation.lat, currentStation.lng,
-        currentRadarData.azimuths, currentRadarData.ranges
-    );
+    // Check active radar first (it's on top)
+    const activeRadar = getActiveRadar();
+    if (activeRadar && activeRadar.radarData && activeRadar.station) {
+        const indices = latLngToRadarIndex(
+            clickLat, clickLng,
+            activeRadar.station.lat, activeRadar.station.lng,
+            activeRadar.radarData.azimuths, activeRadar.radarData.ranges
+        );
 
-    if (!indices) return;
+        if (indices) {
+            const { azimuthIndex, rangeIndex } = indices;
+            const dataIndex = azimuthIndex * activeRadar.radarData.ranges.length + rangeIndex;
+            const value = activeRadar.radarData.data[dataIndex];
+            const config = PRODUCT_CONFIG[activeRadar.moment];
+            tooltipManager.toggleTooltip(azimuthIndex, rangeIndex, clickLat, clickLng, value, config.units);
+            return;
+        }
+    }
 
-    const { azimuthIndex, rangeIndex } = indices;
-    const dataIndex = azimuthIndex * currentRadarData.ranges.length + rangeIndex;
-    const value = currentRadarData.data[dataIndex];
+    // If not within active radar, check other radars
+    for (const [radarId, radarState] of radars) {
+        if (radarId === activeRadarId) continue;
+        if (!radarState.radarData || !radarState.station) continue;
 
-    const config = PRODUCT_CONFIG[currentMoment];
-    tooltipManager.toggleTooltip(azimuthIndex, rangeIndex, clickLat, clickLng, value, config.units);
+        const indices = latLngToRadarIndex(
+            clickLat, clickLng,
+            radarState.station.lat, radarState.station.lng,
+            radarState.radarData.azimuths, radarState.radarData.ranges
+        );
+
+        if (indices) {
+            const { azimuthIndex, rangeIndex } = indices;
+            const dataIndex = azimuthIndex * radarState.radarData.ranges.length + rangeIndex;
+            const value = radarState.radarData.data[dataIndex];
+            const config = PRODUCT_CONFIG[radarState.moment];
+            tooltipManager.toggleTooltip(azimuthIndex, rangeIndex, clickLat, clickLng, value, config.units);
+            return;
+        }
+    }
 });
+
 
 // Opacity changed
 document.addEventListener('opacity-changed', (e) => {
     const { opacity } = e.detail;
-    console.log(opacity);
-    if (radarOverlay) {
-        radarOverlay.setOpacity(opacity);
+    const activeRadar = getActiveRadar();
+    if (!activeRadar) return;
+
+    activeRadar.opacity = opacity;
+    if (activeRadar.overlay) {
+        activeRadar.overlay.setOpacity(opacity);
+    }
+});
+
+document.addEventListener('radar-marker-clicked', (e) => {
+    const { radarId } = e.detail;
+    if (radars.has(radarId)) {
+        setActiveRadar(radarId);
     }
 });
 
 // Clear overlay
 document.addEventListener('clear-overlay', () => {
-    cleanupOverlay();
-    tooltipManager.clearAll();
-    if (currentProfile !== null) {
-        currentProfile.destroy();
-        currentProfile = null;
+    const activeRadar = getActiveRadar();
+    if (!activeRadar) return;
+
+    // Clean up this radar
+    if (activeRadar.overlay) {
+        activeRadar.overlay.setMap(null);
     }
-    clearLevel2Legend();
-    radar = null;
-    currentRadarData = null;
-    currentStation = null;
-    currentTerrainData = null;
-    setCloseTimeoutDisabled(false);
+    if (activeRadar.profile) {
+        activeRadar.profile.destroy();
+    }
+
+    radars.delete(activeRadarId);
+
+    // Dispatch radar-removed event
+    document.dispatchEvent(new CustomEvent('radar-removed', {
+        detail: { radarId: activeRadarId }
+    }));
+
+    // Set new active radar (if any remain)
+    if (radars.size > 0) {
+        const nextRadarId = radars.keys().next().value;
+        setActiveRadar(nextRadarId);
+    } else {
+        activeRadarId = null;
+        clearLevel2Legend();
+        tooltipManager.clearAll();
+        setCloseTimeoutDisabled(false);
+    }
+
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
 });
+
 
 // Mode switching - show/hide Level II overlay
 document.addEventListener('mode-changed', (e) => {
     const { mode } = e.detail;
 
     if (mode === 'level2') {
-        // Show Level II overlay if we have data
-        if (radar && currentStation) {
-            visualize(currentStation)
-            tooltipManager.showAll();
-            if (currentProfile) {
-                currentProfile.show();
+        // Show all radar overlays
+        for (const [radarId, radarState] of radars) {
+            if (radarState.overlay) {
+                radarState.overlay.setMap(map);
             }
-            // Re-show legend
-            const config = PRODUCT_CONFIG[currentMoment] || PRODUCT_CONFIG['REF'];
+        }
+
+        // Show active radar's profile
+        const activeRadar = getActiveRadar();
+        if (activeRadar) {
+            if (activeRadar.profile) {
+                activeRadar.profile.show();
+            }
+            const config = PRODUCT_CONFIG[activeRadar.moment] || PRODUCT_CONFIG['REF'];
             updateLevel2Legend(config.palette, config.units, config.labelStep || 1);
         }
+
+        tooltipManager.showAll();
     } else {
-        // Hide Level II overlay when switching away
-        if (radarOverlay) {
-            radarOverlay.setMap(null);
+        // Hide all radar overlays
+        for (const [radarId, radarState] of radars) {
+            if (radarState.overlay) {
+                radarState.overlay.setMap(null);
+            }
+            if (radarState.profile) {
+                radarState.profile.hide();
+            }
         }
         tooltipManager.hideAll();
-        if (currentProfile) {
-            currentProfile.hide();
-        }
-        setCloseTimeoutDisabled(false);
     }
 });
 
-function gatherProfileData(azimuth) {
-    if (!radar) return null;
+function gatherProfileData(radarId, azimuth) {
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.radar) return null;
 
-    const config = PRODUCT_CONFIG[currentMoment];
+    const { radar, moment, terrainData } = radarState;
+    const config = PRODUCT_CONFIG[moment];
 
     // Get unique elevation angles (first sweep for each elevation)
     const seenElevations = new Set();
@@ -318,7 +466,7 @@ function gatherProfileData(azimuth) {
     for (const sweep of sweepsToUse) {
         let radarData;
         try {
-            radarData = radar.getData(sweep.index, currentMoment);
+            radarData = radar.getData(sweep.index, moment);
         } catch (e) {
             // Moment not available for this sweep, skip it
             continue;
@@ -371,25 +519,27 @@ function gatherProfileData(azimuth) {
     }
 
     // Get terrain slice for this azimuth
-    const terrainSlice = getTerrainSliceByAzimuth(azimuth);
+    const terrainSlice = getTerrainSliceByAzimuth(radarId, azimuth);
 
     return {
         profileData,
         azimuth,
-        moment: currentMoment,
+        moment: moment,
         units: config.units,
         palette: config.palette,
         minValue: config.minValue,
         maxValue: config.maxValue,
         terrain: terrainSlice,
-        terrainWidth: currentTerrainData ? currentTerrainData.width : null
+        terrainWidth: terrainData ? terrainData.width : null
     };
 }
 
-function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
-    if (!radar) return null;
+function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.radar) return null;
 
-    const config = PRODUCT_CONFIG[currentMoment];
+    const { radar, moment, terrainData } = radarState;
+    const config = PRODUCT_CONFIG[moment];
 
     // Get unique elevation angles (first sweep for each elevation)
     const seenElevations = new Set();
@@ -410,7 +560,7 @@ function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
     for (const sweep of sweepsToUse) {
         let radarData;
         try {
-            radarData = radar.getData(sweep.index, currentMoment);
+            radarData = radar.getData(sweep.index, moment);
         } catch (e) {
             continue;
         }
@@ -466,15 +616,15 @@ function gatherRHIData(startAzimuth, endAzimuth, rangeKm) {
         });
     }
 
-    const terrainSlice = getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm);
-    const stationElevation = currentTerrainData ? currentTerrainData.terrainProfile[0] : 0;
+    const terrainSlice = getTerrainSliceByRange(radarId, startAzimuth, endAzimuth, rangeKm);
+    const stationElevation = terrainData ? terrainData.terrainProfile[0] : 0;
 
     return {
         profileData,
         startAzimuth,
         endAzimuth,
         rangeKm,
-        moment: currentMoment,
+        moment: moment,
         units: config.units,
         palette: config.palette,
         minValue: config.minValue,
@@ -518,20 +668,25 @@ async function fetchTerrainProfile(lat, lng) {
     }
 }
 
-function getTerrainSliceByAzimuth(azimuth) {
-    if (!currentTerrainData) return null;
+function getTerrainSliceByAzimuth(radarId, azimuth) {
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.terrainData) return null;
 
+    const { terrainData } = radarState;
     const normalizedAzimuth = ((Math.round(azimuth) % 360) + 360) % 360;
-    const start = normalizedAzimuth * currentTerrainData.width;
-    const stop = start + currentTerrainData.width;
-    return currentTerrainData.terrainProfile.slice(start, stop);
+    const start = normalizedAzimuth * terrainData.width;
+    const stop = start + terrainData.width;
+    return terrainData.terrainProfile.slice(start, stop);
 }
 
-function getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm) {
-    if (!currentTerrainData) return null;
+function getTerrainSliceByRange(radarId, startAzimuth, endAzimuth, rangeKm) {
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.terrainData) return null;
+
+    const { terrainData } = radarState;
 
     // Clamp range index to valid bounds
-    const rangeIndex = Math.min(Math.round(rangeKm), currentTerrainData.width - 1);
+    const rangeIndex = Math.min(Math.round(rangeKm), terrainData.width - 1);
 
     // Calculate slice width (handling wraparound)
     const sliceWidth = endAzimuth >= startAzimuth
@@ -545,10 +700,10 @@ function getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm) {
         const az = ((startAzimuth + i) % 360 + 360) % 360;
         const normalizedAz = Math.round(az) % 360;
         // Terrain data layout: [azimuth * width + rangeIndex]
-        const index = normalizedAz * currentTerrainData.width + rangeIndex;
+        const index = normalizedAz * terrainData.width + rangeIndex;
         terrainValues.push({
             azimuth: az,
-            elevation: currentTerrainData.terrainProfile[index] || 0
+            elevation: terrainData.terrainProfile[index] || 0
         });
     }
 
@@ -556,8 +711,18 @@ function getTerrainSliceByRange(startAzimuth, endAzimuth, rangeKm) {
 }
 
 document.addEventListener('profile-azimuth-changed', (e) => {
-    const { azimuth } = e.detail;
-    const data = gatherProfileData(azimuth);
+    const { azimuth, radarId } = e.detail;
+
+    // If radarId provided, use it; otherwise use active radar
+    const targetRadarId = radarId || activeRadarId;
+    if (!targetRadarId) return;
+
+    // Set this radar as active (profile interaction)
+    if (targetRadarId !== activeRadarId) {
+        setActiveRadar(targetRadarId);
+    }
+
+    const data = gatherProfileData(targetRadarId, azimuth);
     if (data) {
         document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
     }
@@ -565,8 +730,16 @@ document.addEventListener('profile-azimuth-changed', (e) => {
 
 // Listen for RHI profile changes
 document.addEventListener('profile-rhi-changed', (e) => {
-    const { startAzimuth, endAzimuth, rangeKm } = e.detail;
-    const data = gatherRHIData(startAzimuth, endAzimuth, rangeKm);
+    const { startAzimuth, endAzimuth, rangeKm, radarId } = e.detail;
+
+    const targetRadarId = radarId || activeRadarId;
+    if (!targetRadarId) return;
+
+    if (targetRadarId !== activeRadarId) {
+        setActiveRadar(targetRadarId);
+    }
+
+    const data = gatherRHIData(targetRadarId, startAzimuth, endAzimuth, rangeKm);
     if (data) {
         document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
     }
@@ -575,8 +748,9 @@ document.addEventListener('profile-rhi-changed', (e) => {
 // Listen for mode changes from graph
 document.addEventListener('profile-mode-changed', (e) => {
     const { mode } = e.detail;
-    if (currentProfile) {
-        currentProfile.setMode(mode);
+    const activeRadar = getActiveRadar();
+    if (activeRadar && activeRadar.profile) {
+        activeRadar.profile.setMode(mode);
     }
 });
 

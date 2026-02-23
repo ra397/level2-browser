@@ -21,14 +21,23 @@ mapReady.then(() => {
 
         // Handle marker clicks - select radar station
         nexradMarkers.onClick((markerObj) => {
+            const radarId = markerObj.properties.id;
+
             nexradMarkers.select(markerObj);
+
+            // Dispatch radar-selected for MRMS mode workflow
             document.dispatchEvent(new CustomEvent('radar-selected', {
                 detail: {
-                    id: markerObj.properties.id,
+                    id: radarId,
                     name: markerObj.properties.name,
                     lat: markerObj.marker.getPosition().lat(),
                     lng: markerObj.marker.getPosition().lng(),
                 }
+            }));
+
+            // If this radar is already loaded, set it as active
+            document.dispatchEvent(new CustomEvent('radar-marker-clicked', {
+                detail: { radarId }
             }));
         });
     });

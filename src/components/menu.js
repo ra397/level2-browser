@@ -22,7 +22,7 @@ const level2Loading = document.getElementById('level2-loading');
 let selectedRadar = null;
 let mrmsMode = false; // Track if we're in MRMS mode
 
-function populateSweeps(sweeps) {
+function populateSweeps(sweeps, currentSweepIndex = 0) {
     sweepList.innerHTML = '';
     sweeps.forEach((sweep, i) => {
         const label = document.createElement('label');
@@ -30,7 +30,7 @@ function populateSweeps(sweeps) {
         radio.type = 'radio';
         radio.name = 'sweep';
         radio.value = i;
-        if (i === 0) radio.checked = true;
+        if (i === currentSweepIndex) radio.checked = true;
         label.appendChild(radio);
         label.append(` Sweep ${sweep.index} (${sweep.elevation.toFixed(1)}°) `);
         sweepList.appendChild(label);
@@ -82,7 +82,7 @@ momentList.addEventListener('change', (e) => {
 
 // Listen: decode-success
 document.addEventListener('decode-success', (e) => {
-    const { sweeps, moments, currentMoment, url } = e.detail;
+    const { radarId, sweeps, moments, currentMoment, url } = e.detail;
 
     level2Instructions.style.display = 'none';
     level2RadarSelection.style.display = 'block';
@@ -90,9 +90,12 @@ document.addEventListener('decode-success', (e) => {
     decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
-    populateSweeps(sweeps);
+    populateSweeps(sweeps, 0);  // Use sweeps from event, sweepIndex is 0 for new decode
     populateMoments(moments, currentMoment);
     overlayControls.style.display = '';
+
+    // Update selected radar ID
+    selectedRadarIdEl.textContent = radarId;
 
     // Update volume sweep timestamp
     if (url) {
@@ -133,16 +136,6 @@ clearOverlayBtn.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('clear-overlay'));
 });
 
-document.addEventListener('overlay-cleared', () => {
-    urlInput.value = '';
-    sweepContainer.style.display = 'none';
-    momentContainer.style.display = 'none';
-    overlayControls.style.display = 'none';
-    opacitySlider.value = 1;
-    opacityValue.textContent = '100%';
-    volumeSweepTimestampEl.textContent = '--';
-});
-
 // --- MRMS Mode / Radar Selection ---
 
 // When MRMS data starts loading, switch to MRMS mode
@@ -165,6 +158,49 @@ document.addEventListener('mrms-clear', () => {
 document.addEventListener('radar-selected', (e) => {
     selectedRadar = e.detail;
     selectedRadarIdEl.textContent = selectedRadar.id;
+});
+
+document.addEventListener('radar-focused', (e) => {
+    const { radarId, radar } = e.detail;
+
+    if (!radar) {
+        selectedRadarIdEl.textContent = '--';
+        volumeSweepTimestampEl.textContent = '--';
+        return;
+    }
+
+    selectedRadarIdEl.textContent = radarId;
+
+    if (radar.timestamp) {
+        volumeSweepTimestampEl.textContent = radar.timestamp.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    } else {
+        volumeSweepTimestampEl.textContent = '--';
+    }
+
+    // Update sweeps and moments for this radar
+    if (radar.radar) {
+        populateSweeps(radar.radar.sweeps);
+        const moments = radar.radar.getMomentsForSweep(radar.sweepIndex);
+        populateMoments(moments, radar.moment);
+
+        // Update opacity slider to match this radar's opacity
+        opacitySlider.value = radar.opacity;
+        opacityValue.textContent = `${Math.round(radar.opacity * 100)}%`;
+    }
+
+    overlayControls.style.display = '';
+});
+
+// Update overlay-cleared to handle partial clear
+document.addEventListener('overlay-cleared', () => {
+    // Only reset URL input, don't hide controls if there are still radars
+    urlInput.value = '';
+});
+
+// Listen for when no radars remain
+document.addEventListener('radar-removed', (e) => {
+    // The radar-focused event will handle updating the UI to the next active radar
+    // or clearing it if no radars remain
 });
 
 // View Level II button - fetch nearest file to current MRMS frame
@@ -274,7 +310,7 @@ async function findNearestLevel2File(radarId, targetTime) {
     return null;
 }
 
-function extractLevel2Timestamp(filename) {
+export function extractLevel2Timestamp(filename) {
     // Format: YYYY/MM/DD/RADARID/RADARIDYYYYMMDD_HHMMSS_V0X
     const match = filename.match(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_V\d+/);
     if (!match) return null;
