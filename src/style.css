@@ -364,3 +364,7 @@ body {
     user-select: none;
     background: #eee;
 }
+
+#mrmsOverlayControls {
+    margin-top: 15px;
+}

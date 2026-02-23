@@ -32,14 +32,17 @@
 
     position: relative;
 
-    padding-top: 0.2rem;
+    /*padding-top: 0.2rem;*/
+
+    margin-top: calc(-1 * var(--unit-width));
+    padding-top: calc(var(--unit-width) + 0.2rem)
 }
 
 /* ticks */
 #timeline-container .timeline-unit::before {
     content: '';
     position: absolute;
-    top: 0;
+    top: var(--unit-width);
     left: 50%;
     transform: translateX(-50%);
     outline: 1px solid black;
