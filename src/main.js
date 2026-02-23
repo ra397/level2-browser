@@ -169,7 +169,8 @@ document.addEventListener('decode-requested', async (e) => {
             detail: {
                 sweeps: radar.sweeps,
                 moments: moments,
-                currentMoment: currentMoment
+                currentMoment: currentMoment,
+                url: url,
             }
         }));
 

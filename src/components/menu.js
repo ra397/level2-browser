@@ -15,6 +15,7 @@ const clearOverlayBtn = document.getElementById('clearOverlayBtn');
 const level2Instructions = document.getElementById('level2-instructions');
 const level2RadarSelection = document.getElementById('level2-radar-selection');
 const selectedRadarIdEl = document.getElementById('selectedRadarId');
+const volumeSweepTimestampEl = document.getElementById('volumeSweepTimestamp');
 const viewLevel2Btn = document.getElementById('viewLevel2Btn');
 const level2Loading = document.getElementById('level2-loading');
 
@@ -81,14 +82,24 @@ momentList.addEventListener('change', (e) => {
 
 // Listen: decode-success
 document.addEventListener('decode-success', (e) => {
-    const { sweeps, moments, currentMoment } = e.detail;
+    const { sweeps, moments, currentMoment, url } = e.detail;
 
     decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
     populateSweeps(sweeps);
     populateMoments(moments, currentMoment);
-    overlayControls.style.display = '';  // Add this line
+    overlayControls.style.display = '';
+
+    // Update volume sweep timestamp
+    if (url) {
+        const timestamp = extractLevel2Timestamp(url);
+        if (timestamp) {
+            volumeSweepTimestampEl.textContent = timestamp.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+        } else {
+            volumeSweepTimestampEl.textContent = '--';
+        }
+    }
 });
 
 // Listen: decode-error
@@ -126,6 +137,7 @@ document.addEventListener('overlay-cleared', () => {
     overlayControls.style.display = 'none';
     opacitySlider.value = 1;
     opacityValue.textContent = '100%';
+    volumeSweepTimestampEl.textContent = '--';
 });
 
 // --- MRMS Mode / Radar Selection ---
