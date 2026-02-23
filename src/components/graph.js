@@ -811,12 +811,7 @@ document.addEventListener('profile-data-ready', (e) => {
 
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsAHI(elevationAngles);
-
-    const isNewData = !hasData;
     setHasData(true);
-    if (isNewData) {
-        setFolded(false);
-    }
 
     render();
     renderAxes();
@@ -843,12 +838,7 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
 
     const elevationAngles = profileData.map(p => p.elevation);
     beams = computeBeamsRHI(elevationAngles, rangeKm, stationElevM);
-
-    const isNewData = !hasData;
     setHasData(true);
-    if (isNewData) {
-        setFolded(false);
-    }
 
     render();
     renderAxes();

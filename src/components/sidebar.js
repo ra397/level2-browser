@@ -3,6 +3,7 @@ const sidebarOptions = document.querySelectorAll('.sidebar-item, .left-sidebar-i
 let activeMenu = null;
 let closeTimeout = null;
 let openTimeout = null;
+let disableCloseTimeout = false;
 const OPEN_DELAY = 300;   // ms delay before opening menu
 const CLOSE_DELAY = 1300; // ms delay before closing menu
 
@@ -38,10 +39,9 @@ function cancelOpen() {
 }
 
 function scheduleClose() {
-    if (closeTimeout) {
-        clearTimeout(closeTimeout);
-    }
+    if (disableCloseTimeout) return;
 
+    cancelClose();
     closeTimeout = setTimeout(() => {
         if (activeMenu) {
             document.getElementById(activeMenu).classList.add('hidden');
@@ -84,3 +84,10 @@ sidebarOptions.forEach(item => {
         });
     }
 });
+
+export function setCloseTimeoutDisabled(disabled) {
+    disableCloseTimeout = disabled;
+    if (disabled) {
+        cancelClose(); // Clear any pending close
+    }
+}

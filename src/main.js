@@ -22,6 +22,7 @@ import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
 import {getCurrentMode} from "./components/mode-toggle.js";
+import {setCloseTimeoutDisabled} from "./components/sidebar.js";
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },
@@ -171,6 +172,13 @@ document.addEventListener('decode-requested', async (e) => {
                 currentMoment: currentMoment
             }
         }));
+
+        // Zoom to the radar location
+        map.setCenter({ lat: station.lat, lng: station.lng });
+        map.setZoom(7);
+
+        // Keep Level II menu active
+        setCloseTimeoutDisabled(true);
     } catch (err) {
         document.dispatchEvent(new CustomEvent('decode-error', { detail: { message: err.message } }));
     }
@@ -251,6 +259,7 @@ document.addEventListener('clear-overlay', () => {
     currentRadarData = null;
     currentStation = null;
     currentTerrainData = null;
+    setCloseTimeoutDisabled(false);
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
 });
 
@@ -279,6 +288,7 @@ document.addEventListener('mode-changed', (e) => {
         if (currentProfile) {
             currentProfile.hide();
         }
+        setCloseTimeoutDisabled(false);
     }
 });
 
