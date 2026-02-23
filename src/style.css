@@ -368,3 +368,60 @@ body {
 #mrmsOverlayControls {
     margin-top: 15px;
 }
+
+/* D-Pad Controls */
+.dpad-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+}
+
+.dpad-middle-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dpad-btn {
+    all: unset;
+    width: 36px;
+    height: 36px;
+    background: #F2F2F7;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--font-color);
+}
+
+.dpad-btn:hover:not(:disabled) {
+    background: #E5E5EA;
+}
+
+.dpad-btn:active:not(:disabled) {
+    background: #D1D1D6;
+    transform: scale(0.95);
+}
+
+.dpad-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.dpad-center {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+}
+
+.dpad-up, .dpad-down {
+    /* Vertical buttons are centered */
+}
+
+.dpad-left, .dpad-right {
+    /* Horizontal buttons - will be used for volume scan navigation */
+}

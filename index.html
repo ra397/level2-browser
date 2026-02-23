@@ -81,10 +81,6 @@
                 <span class="selected-radar-label">Selected Radar:</span>
                 <span id="selectedRadarId" class="selected-radar-id">--</span>
             </div>
-            <div class="selected-radar-info">
-                <span class="selected-radar-label">Volume Sweep Timestamp:</span>
-                <span id="volumeSweepTimestamp" class="selected-radar-id">--</span>
-            </div>
             <button class="submit-btn" id="viewLevel2Btn">View Level II</button>
             <div id="level2-loading" style="display: none; font-size: 12px; color: #666; margin-top: 8px;">
                 Loading...
@@ -92,10 +88,40 @@
         </div>
 
         <div id="sweepContainer" class="section-container" style="display: none;">
-            <div class="section-header">
-                <span>Sweeps</span>
+            <div class="selected-radar-info">
+                <span class="selected-radar-label">Volume Sweep Timestamp:</span>
+                <span id="volumeSweepTimestamp" class="selected-radar-id">--</span>
             </div>
-            <div id="sweepList" class="radio-grid"></div>
+            <div class="selected-radar-info">
+                <span class="selected-radar-label">Current Sweep:</span>
+                <span id="currentSweepDisplay" class="selected-radar-id">--</span>
+            </div>
+
+            <div class="dpad-container">
+                <button class="dpad-btn dpad-up" id="dpadUp" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 8l-6 6h12z"/>
+                    </svg>
+                </button>
+                <div class="dpad-middle-row">
+                    <button class="dpad-btn dpad-left" id="dpadLeft" disabled>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M14 6l-6 6 6 6z"/>
+                        </svg>
+                    </button>
+                    <div class="dpad-center"></div>
+                    <button class="dpad-btn dpad-right" id="dpadRight" disabled>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M10 6l6 6-6 6z"/>
+                        </svg>
+                    </button>
+                </div>
+                <button class="dpad-btn dpad-down" id="dpadDown" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 16l6-6H6z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div id="momentContainer" class="section-container" style="display: none;">

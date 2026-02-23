@@ -3,7 +3,6 @@ import {getCurrentFrameTime} from "../mrms/display.js";
 const decodeBtn = document.getElementById('decodeBtn');
 const urlInput = document.getElementById('urlInput');
 const sweepContainer = document.getElementById('sweepContainer');
-const sweepList = document.getElementById('sweepList');
 const momentContainer = document.getElementById('momentContainer');
 const momentList = document.getElementById('momentList');
 const overlayControls = document.getElementById('overlayControls');
@@ -16,26 +15,54 @@ const level2Instructions = document.getElementById('level2-instructions');
 const level2RadarSelection = document.getElementById('level2-radar-selection');
 const selectedRadarIdEl = document.getElementById('selectedRadarId');
 const volumeSweepTimestampEl = document.getElementById('volumeSweepTimestamp');
+const currentSweepDisplay = document.getElementById('currentSweepDisplay');
 const viewLevel2Btn = document.getElementById('viewLevel2Btn');
 const level2Loading = document.getElementById('level2-loading');
 
+// d-pad
+const dpadUp = document.getElementById('dpadUp');
+const dpadDown = document.getElementById('dpadDown');
+const dpadLeft = document.getElementById('dpadLeft');
+const dpadRight = document.getElementById('dpadRight');
+
 let selectedRadar = null;
 let mrmsMode = false; // Track if we're in MRMS mode
+let currentSweeps = [];  // Array of sweep objects
+let currentSweepIndex = 0;
 
-function populateSweeps(sweeps, currentSweepIndex = 0) {
-    sweepList.innerHTML = '';
-    sweeps.forEach((sweep, i) => {
-        const label = document.createElement('label');
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'sweep';
-        radio.value = i;
-        if (i === currentSweepIndex) radio.checked = true;
-        label.appendChild(radio);
-        label.append(` Sweep ${sweep.index} (${sweep.elevation.toFixed(1)}°) `);
-        sweepList.appendChild(label);
-    });
-    sweepContainer.style.display = '';
+
+dpadUp.addEventListener('click', () => {
+    if (currentSweepIndex < currentSweeps.length - 1) {
+        const newIndex = currentSweepIndex + 1;
+        document.dispatchEvent(new CustomEvent('sweep-changed', { detail: { index: newIndex } }));
+    }
+});
+
+// D-pad down button - decrease sweep index
+dpadDown.addEventListener('click', () => {
+    if (currentSweepIndex > 0) {
+        const newIndex = currentSweepIndex - 1;
+        document.dispatchEvent(new CustomEvent('sweep-changed', { detail: { index: newIndex } }));
+    }
+});
+
+function updateSweepDisplay(sweeps, sweepIndex) {
+    currentSweeps = sweeps;
+    currentSweepIndex = sweepIndex;
+
+    if (!sweeps || sweeps.length === 0) {
+        currentSweepDisplay.textContent = '--';
+        dpadUp.disabled = true;
+        dpadDown.disabled = true;
+        return;
+    }
+
+    const sweep = sweeps[sweepIndex];
+    currentSweepDisplay.textContent = `${sweepIndex} (${sweep.elevation.toFixed(1)}°)`;
+
+    // Update button states
+    dpadDown.disabled = sweepIndex === 0;
+    dpadUp.disabled = sweepIndex === sweeps.length - 1;
 }
 
 function populateMoments(moments, currentMoment) {
@@ -68,12 +95,6 @@ decodeBtn.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
 });
 
-// Sweep radio change
-sweepList.addEventListener('change', (e) => {
-    const index = parseInt(e.target.value);
-    document.dispatchEvent(new CustomEvent('sweep-changed', { detail: { index } }));
-});
-
 // Moment radio change
 momentList.addEventListener('change', (e) => {
     const moment = e.target.value;
@@ -87,10 +108,12 @@ document.addEventListener('decode-success', (e) => {
     level2Instructions.style.display = 'none';
     level2RadarSelection.style.display = 'block';
 
+    sweepContainer.style.display = '';
+
     decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
-    populateSweeps(sweeps, 0);  // Use sweeps from event, sweepIndex is 0 for new decode
+    updateSweepDisplay(sweeps, 0);  // New decode starts at sweep 0
     populateMoments(moments, currentMoment);
     overlayControls.style.display = '';
 
@@ -120,8 +143,13 @@ document.addEventListener('decode-error', (e) => {
 
 // Listen: moments-updated
 document.addEventListener('moments-updated', (e) => {
-    const { moments, currentMoment } = e.detail;
+    const { moments, currentMoment, sweepIndex } = e.detail;
     populateMoments(moments, currentMoment);
+
+    // Update sweep display with new index (the sweep may have changed)
+    if (currentSweeps.length > 0 && sweepIndex !== undefined) {
+        updateSweepDisplay(currentSweeps, sweepIndex);
+    }
 });
 
 // Opacity slider change
@@ -166,6 +194,10 @@ document.addEventListener('radar-focused', (e) => {
     if (!radar) {
         selectedRadarIdEl.textContent = '--';
         volumeSweepTimestampEl.textContent = '--';
+        updateSweepDisplay([], 0);
+        sweepContainer.style.display = 'none';
+        momentContainer.style.display = 'none';
+        overlayControls.style.display = 'none';
         return;
     }
 
@@ -179,13 +211,15 @@ document.addEventListener('radar-focused', (e) => {
 
     // Update sweeps and moments for this radar
     if (radar.radar) {
-        populateSweeps(radar.radar.sweeps);
+        updateSweepDisplay(radar.radar.sweeps, radar.sweepIndex);
         const moments = radar.radar.getMomentsForSweep(radar.sweepIndex);
         populateMoments(moments, radar.moment);
 
         // Update opacity slider to match this radar's opacity
         opacitySlider.value = radar.opacity;
         opacityValue.textContent = `${Math.round(radar.opacity * 100)}%`;
+
+        sweepContainer.style.display = '';
     }
 
     overlayControls.style.display = '';

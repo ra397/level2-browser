@@ -284,7 +284,8 @@ document.addEventListener('sweep-changed', (e) => {
     document.dispatchEvent(new CustomEvent('moments-updated', {
         detail: {
             moments: moments,
-            currentMoment: activeRadar.moment
+            currentMoment: activeRadar.moment,
+            sweepIndex: activeRadar.sweepIndex,
         }
     }));
 });
