@@ -17,7 +17,6 @@ const selectedRadarIdEl = document.getElementById('selectedRadarId');
 const volumeSweepTimestampEl = document.getElementById('volumeSweepTimestamp');
 const currentSweepDisplay = document.getElementById('currentSweepDisplay');
 const viewLevel2Btn = document.getElementById('viewLevel2Btn');
-const level2Loading = document.getElementById('level2-loading');
 
 // d-pad
 const dpadUp = document.getElementById('dpadUp');
@@ -33,7 +32,7 @@ let currentVolumeFiles = [];   // Array of file keys for current day
 let currentVolumeIndex = -1;   // Index of current file in the array
 let currentVolumeRadarId = null; // Radar ID for current volume list
 let currentVolumeDate = null;  // Date object for current volume list
-
+let loadedRadarIds = new Set();
 
 dpadUp.addEventListener('click', () => {
     if (currentSweepIndex < currentSweeps.length - 1) {
@@ -81,6 +80,16 @@ function updateSweepDisplay(sweeps, sweepIndex) {
     dpadUp.disabled = sweepIndex === sweeps.length - 1;
 }
 
+const MOMENT_NAMES = {
+    REF: 'Reflectivity',
+    VEL: 'Velocity',
+    SW: 'Spectrum Width',
+    ZDR: 'Differential Reflectivity',
+    PHI: 'Differential Phase',
+    RHO: 'Correlation Coefficient',
+    CFP: 'Clutter Filter Power Removed'
+};
+
 function populateMoments(moments, currentMoment) {
     momentList.innerHTML = '';
     moments.forEach(m => {
@@ -92,6 +101,11 @@ function populateMoments(moments, currentMoment) {
         if (m === currentMoment) radio.checked = true;
         label.appendChild(radio);
         label.append(` ${m} `);
+
+        if (MOMENT_NAMES[m]) {
+            label.title = MOMENT_NAMES[m];
+        }
+
         momentList.appendChild(label);
     });
     momentContainer.style.display = '';
@@ -121,6 +135,13 @@ momentList.addEventListener('change', (e) => {
 document.addEventListener('decode-success', async (e) => {
     const { radarId, sweeps, moments, currentMoment, url } = e.detail;
 
+    // Track this radar as loaded
+    loadedRadarIds.add(radarId);
+
+    // Reset button but keep it disabled since this radar now has an overlay
+    viewLevel2Btn.textContent = 'View Level II';
+    viewLevel2Btn.disabled = true;
+
     level2Instructions.style.display = 'none';
     level2RadarSelection.style.display = 'block';
 
@@ -129,14 +150,12 @@ document.addEventListener('decode-success', async (e) => {
     decodeBtn.textContent = 'View';
     decodeBtn.disabled = false;
 
-    updateSweepDisplay(sweeps, 0);  // New decode starts at sweep 0
+    updateSweepDisplay(sweeps, 0);
     populateMoments(moments, currentMoment);
     overlayControls.style.display = '';
 
-    // Update selected radar ID
     selectedRadarIdEl.textContent = radarId;
 
-    // Update volume sweep timestamp
     if (url) {
         const timestamp = extractLevel2Timestamp(url);
         if (timestamp) {
@@ -145,7 +164,6 @@ document.addEventListener('decode-success', async (e) => {
             volumeSweepTimestampEl.textContent = '--';
         }
 
-        // Update volume file list for left-right navigation
         await updateVolumeFileList(radarId, url);
     }
 });
@@ -156,6 +174,10 @@ document.addEventListener('decode-error', (e) => {
 
     decodeBtn.textContent = 'Decode';
     decodeBtn.disabled = false;
+
+    // Reset View Level II button
+    viewLevel2Btn.textContent = 'View Level II';
+    viewLevel2Btn.disabled = false;
 
     alert('Error: ' + message);
 });
@@ -199,18 +221,42 @@ document.addEventListener('mrms-clear', () => {
     selectedRadarIdEl.textContent = '--';
     level2Instructions.style.display = 'block';
     level2RadarSelection.style.display = 'none';
+
+    // Clear loaded radars tracking
+    loadedRadarIds.clear();
+    viewLevel2Btn.disabled = false;
+    viewLevel2Btn.textContent = 'View Level II';
 });
 
 // When a radar is selected on the map
 document.addEventListener('radar-selected', (e) => {
     selectedRadar = e.detail;
     selectedRadarIdEl.textContent = selectedRadar.id;
+
+    // Enable button only if this radar doesn't already have an overlay
+    const hasOverlay = loadedRadarIds.has(selectedRadar.id);
+
+    viewLevel2Btn.disabled = hasOverlay;
+
+    if (!hasOverlay) {
+        sweepContainer.style.display = 'none';
+        momentContainer.style.display = 'none';
+        overlayControls.style.display = 'none';
+
+        // Clear volume navigation state
+        currentVolumeFiles = [];
+        currentVolumeIndex = -1;
+        currentVolumeRadarId = null;
+        dpadLeft.disabled = true;
+        dpadRight.disabled = true;
+    }
 });
 
 document.addEventListener('radar-focused', async (e) => {
     const { radarId, radar } = e.detail;
 
     if (!radar) {
+        // No active radar - reset the entire Level II menu
         selectedRadarIdEl.textContent = '--';
         volumeSweepTimestampEl.textContent = '--';
         updateSweepDisplay([], 0);
@@ -224,6 +270,25 @@ document.addEventListener('radar-focused', async (e) => {
         currentVolumeRadarId = null;
         dpadLeft.disabled = true;
         dpadRight.disabled = true;
+
+        // Clear loaded radars tracking
+        loadedRadarIds.clear();
+
+        // Reset View Level II button
+        viewLevel2Btn.textContent = 'View Level II';
+        viewLevel2Btn.disabled = false;
+
+        // Reset selected radar
+        selectedRadar = null;
+
+        // Show instructions if not in MRMS mode, otherwise show radar selection
+        if (mrmsMode) {
+            level2RadarSelection.style.display = 'block';
+        } else {
+            level2Instructions.style.display = 'block';
+            level2RadarSelection.style.display = 'none';
+        }
+
         return;
     }
 
@@ -254,6 +319,9 @@ document.addEventListener('radar-focused', async (e) => {
     }
 
     overlayControls.style.display = '';
+
+    // Disable View Level II button since this radar has an overlay
+    viewLevel2Btn.disabled = true;
 });
 
 // Update overlay-cleared to handle partial clear
@@ -264,8 +332,13 @@ document.addEventListener('overlay-cleared', () => {
 
 // Listen for when no radars remain
 document.addEventListener('radar-removed', (e) => {
-    // The radar-focused event will handle updating the UI to the next active radar
-    // or clearing it if no radars remain
+    const { radarId } = e.detail;
+    loadedRadarIds.delete(radarId);
+
+    // If the currently selected radar was removed, re-enable the button
+    if (selectedRadar && selectedRadar.id === radarId) {
+        viewLevel2Btn.disabled = false;
+    }
 });
 
 // View Level II button - fetch nearest file to current MRMS frame
@@ -275,7 +348,6 @@ viewLevel2Btn.addEventListener('click', async () => {
         return;
     }
 
-    // Import getCurrentFrameTime from MRMS display
     const frameTime = getCurrentFrameTime();
 
     if (!frameTime) {
@@ -284,27 +356,28 @@ viewLevel2Btn.addEventListener('click', async () => {
     }
 
     viewLevel2Btn.disabled = true;
-    level2Loading.style.display = 'block';
-    level2Loading.textContent = 'Finding nearest file...';
+    viewLevel2Btn.textContent = 'Finding nearest file...';
 
     try {
         const url = await findNearestLevel2File(selectedRadar.id, frameTime);
 
         if (url) {
-            // Decode the Level II file - mode will auto-switch on decode-success
-            level2Loading.textContent = 'Decoding...';
+            viewLevel2Btn.textContent = 'Decoding...';
             document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+            // Note: Button stays disabled and showing "Decoding..." until decode-success
         } else {
             alert('No Level II file found near the selected time');
+            viewLevel2Btn.textContent = 'View Level II';
+            viewLevel2Btn.disabled = false;
         }
     } catch (err) {
         console.error('Error finding Level II file:', err);
         alert('Error: ' + err.message);
-    } finally {
+        viewLevel2Btn.textContent = 'View Level II';
         viewLevel2Btn.disabled = false;
-        level2Loading.style.display = 'none';
     }
 });
+
 
 async function fetchFilesForDate(radarId, date) {
     const year = date.getUTCFullYear();

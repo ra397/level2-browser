@@ -397,6 +397,14 @@ document.addEventListener('clear-overlay', () => {
         clearLevel2Legend();
         tooltipManager.clearAll();
         setCloseTimeoutDisabled(false);
+
+        // Dispatch radar-focused with null to reset the menu
+        document.dispatchEvent(new CustomEvent('radar-focused', {
+            detail: {
+                radarId: null,
+                radar: null
+            }
+        }));
     }
 
     document.dispatchEvent(new CustomEvent('overlay-cleared'));

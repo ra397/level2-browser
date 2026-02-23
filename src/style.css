@@ -66,7 +66,7 @@ body {
 
 #level2-menu {
     position: absolute;
-    top: 130px;
+    top: 129px;
     right: 110px;
 
     width: 40ch;
@@ -74,7 +74,6 @@ body {
     background: var(--background-color);
 
     border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 15px;
     padding: 1.5ch;
 
     display: flex;
@@ -84,13 +83,12 @@ body {
 
 #mrms-menu {
     position: absolute;
-    top: 130px;
+    top: 129px;
     right: 110px;
 
     background: var(--background-color);
 
     border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 15px;
     padding: 0 1.5ch 1.5ch 1.5ch;
 }
 
@@ -165,6 +163,7 @@ body {
 .selected-radar-label {
     font-size: 13px;
     color: #8E8E93;
+    width: 16ch;
 }
 
 .selected-radar-id {
@@ -204,6 +203,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    justify-content: space-around;
 }
 
 .overlay-controls-row {
@@ -354,8 +354,9 @@ body {
     height: 6ch;
     width: 12ch;
 
+    background: var(--background-color);
+
     outline: 1px solid #ccc;
-    background: white;
     padding: 0.3ch;
 }
 
@@ -424,4 +425,9 @@ body {
 
 .dpad-left, .dpad-right {
     /* Horizontal buttons - will be used for volume scan navigation */
+}
+
+#viewLevel2Btn {
+    width: 100%;
+    box-sizing: border-box;
 }
