@@ -30,6 +30,10 @@ let rhiStartAzimuth = 0;
 let rhiEndAzimuth = 15;
 let rhiRangeKm = 50;
 
+// AXS specific state
+let currentAXSData = null;
+let axsLineLengthKm = 0;
+
 let isFolded = true;
 let hasData = false;
 
@@ -111,23 +115,28 @@ function createModeSwitcher() {
     if (!titleBar) return;
 
     titleBar.innerHTML = `
-          <div class="mode-switcher">
-              <label>
-                  <input type="radio" name="profileMode" value="AHI" checked>
-                  AHI
-              </label>
-              <label>
-                  <input type="radio" name="profileMode" value="RHI">
-                  RHI
-              </label>
-          </div>
-          <div class="profile-info" id="profileInfo"></div>
-      `;
+            <div class="mode-switcher">
+                <label>
+                    <input type="radio" name="profileMode" value="AHI" checked>
+                    AHI
+                </label>
+                <label>
+                    <input type="radio" name="profileMode" value="RHI">
+                    RHI
+                </label>
+                <label>
+                    <input type="radio" name="profileMode" value="AXS">
+                    AXS
+                </label>
+            </div>
+            <div class="profile-info" id="profileInfo"></div>
+        `;
 
     titleBar.addEventListener('change', (e) => {
         if (e.target.name === 'profileMode') {
             currentMode = e.target.value;
             currentProfileData = null;
+            currentAXSData = null;
             beams = [];
             render();
             renderAxes();
@@ -145,8 +154,10 @@ function updateProfileInfo() {
 
     if (currentMode === 'AHI') {
         profileInfo.textContent = `Azimuth: ${currentAzimuth.toFixed(1)}°`;
-    } else {
+    } else if (currentMode === 'RHI') {
         profileInfo.textContent = `Range: ${rhiRangeKm.toFixed(2)} km`;
+    } else if (currentMode === 'AXS') {
+        profileInfo.textContent = `Length: ${axsLineLengthKm.toFixed(1)} km`;
     }
 }
 
@@ -205,6 +216,12 @@ function dataToSvgAHI(rangeKm, heightKm, vb) {
 
 function dataToSvgRHI(azimuthOffset, heightKm, sliceWidth, vb) {
     const x = (azimuthOffset / sliceWidth) * vb.w;
+    const y = vb.h - (heightKm / MAX_HEIGHT_KM) * vb.h;
+    return { x, y };
+}
+
+function dataToSvgAXS(distanceKm, heightKm, lineLengthKm, vb) {
+    const x = (distanceKm / lineLengthKm) * vb.w;
     const y = vb.h - (heightKm / MAX_HEIGHT_KM) * vb.h;
     return { x, y };
 }
@@ -462,6 +479,79 @@ function renderRHI() {
     svg.innerHTML = svgContent;
 }
 
+function renderAXS() {
+    const vb = getViewBox();
+    svg.setAttribute('viewBox', `0 0 ${vb.w} ${vb.h}`);
+
+    let svgContent = '';
+
+    svgContent += `<defs>
+            <clipPath id="plotClip">
+                <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+            </clipPath>
+        </defs>`;
+
+    svgContent += `<g clip-path="url(#plotClip)">`;
+
+    // Grid lines - height
+    const yTicks = [0, 5, 10, 15];
+    for (const yk of yTicks) {
+        const p = dataToSvgAXS(0, yk, axsLineLengthKm, vb);
+        svgContent += `<line x1="0" y1="${p.y}" x2="${vb.w}" y2="${p.y}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Vertical grid lines (distance)
+    const distStep = axsLineLengthKm <= 50 ? 10 : axsLineLengthKm <= 100 ? 20 : 50;
+    for (let d = 0; d <= axsLineLengthKm; d += distStep) {
+        const x = (d / axsLineLengthKm) * vb.w;
+        svgContent += `<line x1="${x}" y1="0" x2="${x}" y2="${vb.h}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Draw data
+    if (currentAXSData && currentAXSData.length > 0 && currentPalette) {
+        // For each sample point
+        for (let i = 0; i < currentAXSData.length; i++) {
+            const sample = currentAXSData[i];
+            if (!sample.gates || sample.gates.length === 0) continue;
+
+            const distanceKm = sample.distanceKm;
+            const nextDistanceKm = i < currentAXSData.length - 1
+                ? currentAXSData[i + 1].distanceKm
+                : distanceKm + 1;
+
+            // Draw each elevation gate
+            for (const gate of sample.gates) {
+                const color = valueToColor(gate.value, currentPalette, currentMinValue, currentMaxValue);
+                if (!color) continue;
+
+                const topLeft = dataToSvgAXS(distanceKm, gate.beamTopKm, axsLineLengthKm, vb);
+                const topRight = dataToSvgAXS(nextDistanceKm, gate.beamTopKm, axsLineLengthKm, vb);
+                const bottomRight = dataToSvgAXS(nextDistanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
+                const bottomLeft = dataToSvgAXS(distanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
+
+                svgContent += `<polygon
+                        class="gate-fill"
+                        data-sample-idx="${i}"
+                        data-elevation="${gate.elevation}"
+                        data-value="${gate.value}"
+                        data-distance="${distanceKm}"
+                        points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+    ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                        fill="${color}"
+                        stroke="none"
+                    />`;
+            }
+        }
+    }
+
+    // Crosshairs
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none" />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none" />`;
+
+    svgContent += `</g>`;
+    svg.innerHTML = svgContent;
+}
+
 function renderTerrainAHI(vb) {
     if (!currentAHITerrain || !currentTerrainWidth) return '';
 
@@ -607,8 +697,10 @@ function renderTerrainRHI(vb, sliceWidth) {
 function render() {
     if (currentMode === 'AHI') {
         renderAHI();
-    } else {
+    } else if (currentMode === 'RHI') {
         renderRHI();
+    } else if (currentMode === 'AXS') {
+        renderAXS();
     }
 }
 
@@ -654,11 +746,39 @@ function renderAxesRHI() {
     if (xTitle) xTitle.textContent = 'Azimuth (°)';
 }
 
+function renderAxesAXS() {
+    const yLabels = document.getElementById('yLabels');
+    const xLabels = document.getElementById('xLabels');
+    const yTitle = document.querySelector('.y-axis-title');
+    const xTitle = document.querySelector('.x-axis-title');
+
+    // Y-axis: height (same as AHI/RHI)
+    const yTicks = [15, 10, 5, 0];
+    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
+
+    // X-axis: distance along line
+    const xTicks = [];
+    const distStep = axsLineLengthKm <= 50 ? 10 : axsLineLengthKm <= 100 ? 20 : 50;
+    for (let d = 0; d <= axsLineLengthKm; d += distStep) {
+        xTicks.push(d.toFixed(0));
+    }
+    // Always include the end point if not already included
+    if (axsLineLengthKm % distStep !== 0) {
+        xTicks.push(axsLineLengthKm.toFixed(0));
+    }
+    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
+
+    if (yTitle) yTitle.textContent = 'Height (km)';
+    if (xTitle) xTitle.textContent = 'Distance (km)';
+}
+
 function renderAxes() {
     if (currentMode === 'AHI') {
         renderAxesAHI();
-    } else {
+    } else if (currentMode === 'RHI') {
         renderAxesRHI();
+    } else if (currentMode === 'AXS') {
+        renderAxesAXS();
     }
 }
 
@@ -737,6 +857,39 @@ function findNearestBeamAndGateRHI(azimuthOffset, heightKm) {
     return { beam: bestBeam, gate: bestGate };
 }
 
+function findNearestGateAXS(distanceKm, heightKm) {
+    if (!currentAXSData || currentAXSData.length === 0) return { sample: null, gate: null };
+
+    // Find closest sample by distance
+    let bestSampleIdx = 0;
+    let minDistDiff = Infinity;
+    for (let i = 0; i < currentAXSData.length; i++) {
+        const diff = Math.abs(currentAXSData[i].distanceKm - distanceKm);
+        if (diff < minDistDiff) {
+            minDistDiff = diff;
+            bestSampleIdx = i;
+        }
+    }
+
+    const sample = currentAXSData[bestSampleIdx];
+    if (!sample || !sample.gates || sample.gates.length === 0) {
+        return { sample, gate: null };
+    }
+
+    // Find the closest gate by height
+    let bestGate = null;
+    let minHeightDiff = Infinity;
+    for (const gate of sample.gates) {
+        const diff = Math.abs(gate.beamCenterKm - heightKm);
+        if (diff < minHeightDiff) {
+            minHeightDiff = diff;
+            bestGate = gate;
+        }
+    }
+
+    return { sample, gate: bestGate };
+}
+
 container.addEventListener('mousemove', (e) => {
     const rect = container.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -789,6 +942,45 @@ container.addEventListener('mousemove', (e) => {
               <div>AGL: ${aglKm.toFixed(2)} km</div>
               <div>Value: ${valueDisplay}</div>
           `;
+        } else {
+            tooltip.style.display = 'none';
+        }
+    } else if (currentMode === 'AXS') {
+        const distanceKm = (mx / vb.w) * axsLineLengthKm;
+        const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;
+        const { sample, gate } = findNearestGateAXS(distanceKm, heightKm);
+
+        if (sample) {
+            tooltip.style.display = 'block';
+
+            let valueDisplay = 'No Data';
+            if (gate && gate.value !== null && !isNaN(gate.value)) {
+                valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
+            }
+
+            const elevDisplay = gate ? `${gate.elevation.toFixed(1)}°` : 'N/A';
+            const radarDisplay = sample.radarId || 'None';
+            const rangeDisplay = sample.rangeFromRadar ? `${sample.rangeFromRadar.toFixed(1)} km` : 'N/A';
+
+            tooltip.innerHTML = `
+                <div class="elev-label">${elevDisplay} Elevation</div>
+                <div>Distance: ${distanceKm.toFixed(1)} km</div>
+                <div>Radar: ${radarDisplay}</div>
+                <div>Range from radar: ${rangeDisplay}</div>
+                <div>ASL: ${heightKm.toFixed(2)} km</div>
+                <div>Value: ${valueDisplay}</div>
+            `;
+
+            let tx = mx + 14;
+            let ty = my - 10;
+            const tw = tooltip.offsetWidth;
+            const th = tooltip.offsetHeight;
+            const rect = container.getBoundingClientRect();
+            if (tx + tw > rect.width) tx = mx - tw - 14;
+            if (ty + th > rect.height) ty = rect.height - th - 4;
+            if (ty < 0) ty = 4;
+            tooltip.style.left = tx + 'px';
+            tooltip.style.top = ty + 'px';
         } else {
             tooltip.style.display = 'none';
         }
@@ -911,8 +1103,28 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
     updateProfileInfo();
 });
 
+document.addEventListener('profile-axs-data-ready', (e) => {
+    if (currentMode !== 'AXS') return;
+
+    const { samples, lineLengthKm, units, palette, minValue, maxValue } = e.detail;
+
+    currentAXSData = samples;
+    axsLineLengthKm = lineLengthKm;
+    currentPalette = palette;
+    currentMinValue = minValue;
+    currentMaxValue = maxValue;
+    currentUnits = units;
+
+    setHasData(true);
+
+    render();
+    renderAxes();
+    updateProfileInfo();
+});
+
 document.addEventListener('overlay-cleared', () => {
     currentProfileData = null;
+    currentAXSData = null;
     currentPalette = null;
     currentMinValue = 0;
     currentMaxValue = 100;
@@ -922,6 +1134,7 @@ document.addEventListener('overlay-cleared', () => {
     currentTerrainWidth = null;
     stationElevationKm = 0;
     currentAzimuth = 0;
+    axsLineLengthKm = 0;
 
     setHasData(false);
     setFolded(true);

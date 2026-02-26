@@ -130,7 +130,7 @@ function refreshProfileData(radarId) {
         if (data) {
             document.dispatchEvent(new CustomEvent('profile-data-ready', { detail: data }));
         }
-    } else {
+    } else if (profile.getMode() === 'RHI') {
         const data = gatherRHIData(
             radarId,
             profile.getAzimuth(),
@@ -139,6 +139,15 @@ function refreshProfileData(radarId) {
         );
         if (data) {
             document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
+        }
+    } else if (profile.getMode() === 'AXS') {
+        const pointA = profile.getPointA();
+        const pointB = profile.getPointB();
+        if (pointA && pointB) {
+            const data = gatherAXSData(pointA, pointB);
+            if (data) {
+                document.dispatchEvent(new CustomEvent('profile-axs-data-ready', { detail: data }));
+            }
         }
     }
 }
@@ -647,6 +656,222 @@ function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
     };
 }
 
+function gatherAXSData(pointA, pointB) {
+    const lineLengthM = google.maps.geometry.spherical.computeDistanceBetween(
+        new google.maps.LatLng(pointA.lat, pointA.lng),
+        new google.maps.LatLng(pointB.lat, pointB.lng)
+    );
+    const lineLengthKm = lineLengthM / 1000;
+
+    if (lineLengthKm < 1) return null;
+
+    // Determine moment and config from active radar
+    const activeRadar = getActiveRadar();
+    if (!activeRadar) return null;
+
+    const moment = activeRadar.moment;
+    const config = PRODUCT_CONFIG[moment];
+
+    // Calculate heading from A to B
+    const heading = google.maps.geometry.spherical.computeHeading(
+        new google.maps.LatLng(pointA.lat, pointA.lng),
+        new google.maps.LatLng(pointB.lat, pointB.lng)
+    );
+
+    const samples = [];
+
+    // Sample at 1km intervals
+    for (let distKm = 0; distKm <= lineLengthKm; distKm += 1) {
+        // Calculate lat/lng at this distance along the line
+        const samplePoint = google.maps.geometry.spherical.computeOffset(
+            new google.maps.LatLng(pointA.lat, pointA.lng),
+            distKm * 1000,
+            heading
+        );
+        const sampleLat = samplePoint.lat();
+        const sampleLng = samplePoint.lng();
+
+        // Find which radar covers this point
+        const radarForPoint = findRadarForPoint(sampleLat, sampleLng);
+
+        if (!radarForPoint) {
+            // No radar covers this point
+            samples.push({
+                distanceKm: distKm,
+                lat: sampleLat,
+                lng: sampleLng,
+                radarId: null,
+                rangeFromRadar: null,
+                gates: []
+            });
+            continue;
+        }
+
+        // Calculate azimuth and range from this radar to the sample point
+        const radarLat = radarForPoint.station.lat;
+        const radarLng = radarForPoint.station.lng;
+
+        const rangeM = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(radarLat, radarLng),
+            samplePoint
+        );
+        const rangeKm = rangeM / 1000;
+
+        const azimuth = google.maps.geometry.spherical.computeHeading(
+            new google.maps.LatLng(radarLat, radarLng),
+            samplePoint
+        );
+        const normalizedAzimuth = (azimuth + 360) % 360;
+
+        // Get unique elevation angles
+        const seenElevations = new Set();
+        const sweepsToUse = [];
+
+        for (const sweep of radarForPoint.radar.sweeps) {
+            const elevRounded = sweep.elevation.toFixed(1);
+            if (!seenElevations.has(elevRounded)) {
+                seenElevations.add(elevRounded);
+                sweepsToUse.push(sweep);
+            }
+        }
+        sweepsToUse.sort((a, b) => a.elevation - b.elevation);
+
+        const gates = [];
+
+        for (const sweep of sweepsToUse) {
+            let radarData;
+            try {
+                radarData = radarForPoint.radar.getData(sweep.index, moment);
+            } catch (e) {
+                continue;
+            }
+
+            // Find closest azimuth index
+            let azimuthIndex = 0;
+            let minAzDiff = 360;
+            for (let i = 0; i < radarData.azimuths.length; i++) {
+                let diff = Math.abs(radarData.azimuths[i] - normalizedAzimuth);
+                if (diff > 180) diff = 360 - diff;
+                if (diff < minAzDiff) {
+                    minAzDiff = diff;
+                    azimuthIndex = i;
+                }
+            }
+
+            // Find closest range index
+            let rangeIndex = 0;
+            let minRangeDiff = Infinity;
+            for (let r = 0; r < radarData.ranges.length; r++) {
+                const diff = Math.abs(radarData.ranges[r] - rangeKm);
+                if (diff < minRangeDiff) {
+                    minRangeDiff = diff;
+                    rangeIndex = r;
+                }
+            }
+
+            // Extract value
+            const dataIndex = azimuthIndex * radarData.ranges.length + rangeIndex;
+            const value = radarData.data[dataIndex];
+
+            // Calculate beam heights at this range
+            const beamHeights = calculateBeamHeightsAtRange(rangeKm, sweep.elevation);
+
+            gates.push({
+                elevation: sweep.elevation,
+                value: value,
+                beamCenterKm: beamHeights.center,
+                beamTopKm: beamHeights.top,
+                beamBottomKm: beamHeights.bottom
+            });
+        }
+
+        samples.push({
+            distanceKm: distKm,
+            lat: sampleLat,
+            lng: sampleLng,
+            radarId: radarForPoint.id,
+            rangeFromRadar: rangeKm,
+            gates: gates
+        });
+    }
+
+    return {
+        samples,
+        lineLengthKm,
+        pointA,
+        pointB,
+        moment,
+        units: config.units,
+        palette: config.palette,
+        minValue: config.minValue,
+        maxValue: config.maxValue
+    };
+}
+
+function findRadarForPoint(lat, lng) {
+    // Active radar has priority (it's visually on top)
+    const activeRadar = getActiveRadar();
+    if (activeRadar && activeRadar.station) {
+        const dist = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(lat, lng),
+            new google.maps.LatLng(activeRadar.station.lat, activeRadar.station.lng)
+        );
+        if (dist <= 230000) {
+            return activeRadar;
+        }
+    }
+
+    // Check other radars
+    for (const [radarId, radarState] of radars) {
+        if (radarId === activeRadarId) continue;
+        if (!radarState.station) continue;
+
+        const dist = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(lat, lng),
+            new google.maps.LatLng(radarState.station.lat, radarState.station.lng)
+        );
+        if (dist <= 230000) {
+            return radarState;
+        }
+    }
+
+    return null;
+}
+
+function calculateBeamHeightsAtRange(rangeKm, elevationDeg) {
+    const EARTH_RADIUS = 6371000; // meters
+    const K0 = 1 / (4 * EARTH_RADIUS);
+    const BEAMWIDTH = 0.9; // degrees
+    const HALF_BW = BEAMWIDTH / 2;
+
+    const rangeM = rangeKm * 1000;
+
+    const calcHeight = (elev) => {
+        const eaRad = elev * Math.PI / 180;
+        const kappa = K0 * Math.cos(eaRad);
+        const a = EARTH_RADIUS;
+
+        const s_a = rangeM / a;
+        const inner = a * kappa * Math.sin(s_a) - Math.sin(eaRad + s_a);
+        const slantRange = (1 / kappa) * (eaRad + s_a + Math.asin(inner));
+
+        const kr = kappa * slantRange;
+        const sin_kr = Math.sin(kr);
+        const one_minus_cos_kr = 1 - Math.cos(kr);
+
+        const S = (sin_kr / kappa) * Math.cos(eaRad) + (one_minus_cos_kr / kappa) * Math.sin(eaRad);
+        const H = (sin_kr / kappa) * Math.sin(eaRad) - (one_minus_cos_kr / kappa) * Math.cos(eaRad);
+
+        return (Math.sqrt((a + H) ** 2 + S ** 2) - a) / 1000; // km
+    };
+
+    return {
+        center: calcHeight(elevationDeg),
+        top: calcHeight(elevationDeg + HALF_BW),
+        bottom: calcHeight(elevationDeg - HALF_BW)
+    };
+}
+
 async function fetchTerrainProfile(lat, lng) {
     const url = `https://visualriver.net/api-wsr88/get-terrain?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
 
@@ -755,6 +980,22 @@ document.addEventListener('profile-rhi-changed', (e) => {
     const data = gatherRHIData(targetRadarId, startAzimuth, endAzimuth, rangeKm);
     if (data) {
         document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
+    }
+});
+
+document.addEventListener('profile-axs-changed', (e) => {
+    const { pointA, pointB, radarId } = e.detail;
+
+    const targetRadarId = radarId || activeRadarId;
+    if (!targetRadarId) return;
+
+    if (targetRadarId !== activeRadarId) {
+        setActiveRadar(targetRadarId);
+    }
+
+    const data = gatherAXSData(pointA, pointB);
+    if (data) {
+        document.dispatchEvent(new CustomEvent('profile-axs-data-ready', { detail: data }));
     }
 });
 

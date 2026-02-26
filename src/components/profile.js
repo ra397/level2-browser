@@ -1,7 +1,9 @@
 export class Profile {
-    #mode = 'AHI'; // 'AHI' or 'RHI'
+    #mode = 'AHI'; // 'AHI', 'RHI', or 'AXS'
     #rangeKm = 50; // For RHI mode
     #sliceWidth = 15; // degrees
+    #axsPointA = null; // For AXS mode
+    #axsPointB = null; // For AXS mode
 
     constructor(map, lat, lng, maxDistance_m, radarId = null) {
         this.map = map;
@@ -163,6 +165,106 @@ export class Profile {
         this._dispatchRHIChanged();
     }
 
+    _setupAXS() {
+        this._clearMapObjects();
+
+        // Initial line: from radar position, 50km north (0° azimuth)
+        const pointA = { lat: this.lat, lng: this.lng };
+        const pointB = this._getEdgePoint(this.lat, this.lng, 50000, 0); // 50km north
+
+        this.#axsPointA = pointA;
+        this.#axsPointB = pointB;
+
+        // Line connecting A and B
+        this.axsLine = new google.maps.Polyline({
+            path: [pointA, pointB],
+            strokeColor: "#000",
+            strokeWeight: 2,
+            strokeOpacity: 1.0,
+            map: this.map
+        });
+
+        // Marker A (start) - at radar position initially
+        this.axsMarkerA = new google.maps.Marker({
+            position: pointA,
+            map: this.map,
+            clickable: true,
+            icon: this._createMarkerIcon('green'),
+            draggable: true,
+            zIndex: 1000,
+        });
+
+        // Marker B (end) - 50km north initially
+        this.axsMarkerB = new google.maps.Marker({
+            position: pointB,
+            map: this.map,
+            clickable: true,
+            icon: this._createMarkerIcon('green'),
+            draggable: true,
+            zIndex: 1001,
+        });
+
+        // Drag listener for Marker A
+        this.axsMarkerADragListener = this.axsMarkerA.addListener('drag', (event) => {
+            const dragPos = event.latLng;
+            const markerBPos = this.axsMarkerB.getPosition();
+
+            // Calculate distance to marker B
+            const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                dragPos, markerBPos
+            );
+
+            let newPos;
+            if (distance > 230000) {
+                // Constrain to 230km from marker B
+                const heading = google.maps.geometry.spherical.computeHeading(markerBPos, dragPos);
+                const constrainedPoint = google.maps.geometry.spherical.computeOffset(markerBPos, 230000, heading);
+                newPos = { lat: constrainedPoint.lat(), lng: constrainedPoint.lng() };
+                this.axsMarkerA.setPosition(newPos);
+            } else {
+                newPos = { lat: dragPos.lat(), lng: dragPos.lng() };
+            }
+
+            this.#axsPointA = newPos;
+            this.axsLine.setPath([newPos, { lat: markerBPos.lat(), lng: markerBPos.lng() }]);
+        });
+
+        this.axsMarkerADragEndListener = this.axsMarkerA.addListener('dragend', () => {
+            this._dispatchAXSChanged();
+        });
+
+        // Drag listener for Marker B
+        this.axsMarkerBDragListener = this.axsMarkerB.addListener('drag', (event) => {
+            const dragPos = event.latLng;
+            const markerAPos = this.axsMarkerA.getPosition();
+
+            // Calculate distance to marker A
+            const distance = google.maps.geometry.spherical.computeDistanceBetween(
+                markerAPos, dragPos
+            );
+
+            let newPos;
+            if (distance > 230000) {
+                // Constrain to 230km from marker A
+                const heading = google.maps.geometry.spherical.computeHeading(markerAPos, dragPos);
+                const constrainedPoint = google.maps.geometry.spherical.computeOffset(markerAPos, 230000, heading);
+                newPos = { lat: constrainedPoint.lat(), lng: constrainedPoint.lng() };
+                this.axsMarkerB.setPosition(newPos);
+            } else {
+                newPos = { lat: dragPos.lat(), lng: dragPos.lng() };
+            }
+
+            this.#axsPointB = newPos;
+            this.axsLine.setPath([{ lat: markerAPos.lat(), lng: markerAPos.lng() }, newPos]);
+        });
+
+        this.axsMarkerBDragEndListener = this.axsMarkerB.addListener('dragend', () => {
+            this._dispatchAXSChanged();
+        });
+
+        this._dispatchAXSChanged();
+    }
+
     _createArc(radiusM, startAzimuth, endAzimuth) {
         const points = [];
         const steps = 30;
@@ -225,6 +327,10 @@ export class Profile {
         if (this.arcDragEndListener) google.maps.event.removeListener(this.arcDragEndListener);
         if (this.rotateDragListener) google.maps.event.removeListener(this.rotateDragListener);
         if (this.rotateDragEndListener) google.maps.event.removeListener(this.rotateDragEndListener);
+        if (this.axsMarkerADragListener) google.maps.event.removeListener(this.axsMarkerADragListener);
+        if (this.axsMarkerADragEndListener) google.maps.event.removeListener(this.axsMarkerADragEndListener);
+        if (this.axsMarkerBDragListener) google.maps.event.removeListener(this.axsMarkerBDragListener);
+        if (this.axsMarkerBDragEndListener) google.maps.event.removeListener(this.axsMarkerBDragEndListener);
 
         if (this.dragMarker) this.dragMarker.setMap(null);
         if (this.arcDragMarker) this.arcDragMarker.setMap(null);
@@ -233,6 +339,9 @@ export class Profile {
         if (this.line2) this.line2.setMap(null);
         if (this.arc) this.arc.setMap(null);
         if (this.circle) this.circle.setMap(null);
+        if (this.axsMarkerA) this.axsMarkerA.setMap(null);
+        if (this.axsMarkerB) this.axsMarkerB.setMap(null);
+        if (this.axsLine) this.axsLine.setMap(null);
 
         this.dragListener = null;
         this.dragEndListener = null;
@@ -247,6 +356,13 @@ export class Profile {
         this.line2 = null;
         this.arc = null;
         this.circle = null;
+        this.axsMarkerADragListener = null;
+        this.axsMarkerADragEndListener = null;
+        this.axsMarkerBDragListener = null;
+        this.axsMarkerBDragEndListener = null;
+        this.axsMarkerA = null;
+        this.axsMarkerB = null;
+        this.axsLine = null;
     }
 
     setMode(mode) {
@@ -255,8 +371,10 @@ export class Profile {
 
         if (mode === 'AHI') {
             this._setupAHI();
-        } else {
+        } else if (mode === 'RHI') {
             this._setupRHI();
+        } else if (mode === 'AXS') {
+            this._setupAXS();
         }
     }
 
@@ -278,6 +396,14 @@ export class Profile {
 
     getSliceWidth() {
         return this.#sliceWidth;
+    }
+
+    getPointA() {
+        return this.#axsPointA;
+    }
+
+    getPointB() {
+        return this.#axsPointB;
     }
 
     setAzimuth(azimuth) {
@@ -316,6 +442,23 @@ export class Profile {
         this._dispatchRHIChanged();
     }
 
+    setAXS(pointA, pointB) {
+        this.#axsPointA = pointA;
+        this.#axsPointB = pointB;
+
+        if (this.axsMarkerA) {
+            this.axsMarkerA.setPosition(pointA);
+        }
+        if (this.axsMarkerB) {
+            this.axsMarkerB.setPosition(pointB);
+        }
+        if (this.axsLine) {
+            this.axsLine.setPath([pointA, pointB]);
+        }
+
+        this._dispatchAXSChanged();
+    }
+
     _dispatchAzimuthChanged() {
         document.dispatchEvent(new CustomEvent('profile-azimuth-changed', {
             detail: {
@@ -332,6 +475,22 @@ export class Profile {
                 endAzimuth: this.getEndAzimuth(),
                 rangeKm: this.#rangeKm,
                 sliceWidth: this.#sliceWidth,
+                radarId: this.radarId,
+            }
+        }));
+    }
+
+    _dispatchAXSChanged() {
+        const distance = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(this.#axsPointA.lat, this.#axsPointA.lng),
+            new google.maps.LatLng(this.#axsPointB.lat, this.#axsPointB.lng)
+        );
+
+        document.dispatchEvent(new CustomEvent('profile-axs-changed', {
+            detail: {
+                pointA: this.#axsPointA,
+                pointB: this.#axsPointB,
+                lineLengthKm: distance / 1000,
                 radarId: this.radarId,
             }
         }));
@@ -364,6 +523,9 @@ export class Profile {
         if (this.arc) this.arc.setMap(null);
         if (this.dragMarker) this.dragMarker.setMap(null);
         if (this.arcDragMarker) this.arcDragMarker.setMap(null);
+        if (this.axsMarkerA) this.axsMarkerA.setMap(null);
+        if (this.axsMarkerB) this.axsMarkerB.setMap(null);
+        if (this.axsLine) this.axsLine.setMap(null);
     }
 
     show() {
@@ -374,5 +536,8 @@ export class Profile {
         if (this.arc) this.arc.setMap(this.map);
         if (this.dragMarker) this.dragMarker.setMap(this.map);
         if (this.arcDragMarker) this.arcDragMarker.setMap(this.map);
+        if (this.axsMarkerA) this.axsMarkerA.setMap(this.map);
+        if (this.axsMarkerB) this.axsMarkerB.setMap(this.map);
+        if (this.axsLine) this.axsLine.setMap(this.map);
     }
 }
