@@ -482,7 +482,7 @@ function renderTerrainAHI(vb) {
 
         const elevation = currentAHITerrain[i];
         const isNoData = elevation >= NO_DATA_THRESHOLD;
-        const heightKm = isNoData ? 0.5 : elevation / 1000; // Use a small height for no-data areas
+        const heightKm = isNoData ? 15 : elevation / 1000; // Use a small height for no-data areas
 
         if (!currentSegment || currentSegment.isNoData !== isNoData) {
             // Start a new segment
@@ -552,7 +552,7 @@ function renderTerrainRHI(vb, sliceWidth) {
         const azOffset = i;
         const elevation = currentRHITerrain[i].elevation;
         const isNoData = elevation >= NO_DATA_THRESHOLD;
-        const heightKm = isNoData ? 0.5 : elevation / 1000;
+        const heightKm = isNoData ? 15 : elevation / 1000;
 
         if (!currentSegment || currentSegment.isNoData !== isNoData) {
             if (currentSegment) {
