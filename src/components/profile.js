@@ -126,69 +126,37 @@ export class Profile {
 
         this.arcDragListener = this.arcDragMarker.addListener('drag', (event) => {
             const dragPos = event.latLng;
+            const center = { lat: this.lat, lng: this.lng };
+
+            // Calculate distance for range control
             const distance = google.maps.geometry.spherical.computeDistanceBetween(
                 center, dragPos
             );
             // Snap to 250m increments
             const snappedDistance = Math.round(distance / 250) * 250;
             const clampedDistance = Math.max(250, Math.min(snappedDistance, this.maxDistance_m));
-
             this.#rangeKm = clampedDistance / 1000;
 
-            // Update arc
+            // Calculate heading for azimuth control
+            const heading = google.maps.geometry.spherical.computeHeading(center, dragPos);
+            const midAzimuth = (heading + 360) % 360;
+            this.currentAzimuth = (midAzimuth - this.#sliceWidth / 2 + 360) % 360;
+
+            // Update lines and arc
+            this._updateRHILines();
             this._updateArc();
 
-            // Update marker position on arc
-            const midAzimuth = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
+            // Update marker position on arc at new azimuth and range
             const newPos = this._getEdgePoint(this.lat, this.lng, clampedDistance, midAzimuth);
             this.arcDragMarker.setPosition(newPos);
         });
 
         this.arcDragEndListener = this.arcDragMarker.addListener('dragend', (event) => {
-            // Snap marker to arc center at current range
+            // Snap marker to arc center at current range and azimuth
             const midAzimuth = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
             const rangeM = this.#rangeKm * 1000;
             const newPos = this._getEdgePoint(this.lat, this.lng, rangeM, midAzimuth);
             this.arcDragMarker.setPosition(newPos);
-            this._dispatchRHIChanged();
-        });
-
-        // Drag marker to rotate slice
-        const rotatePoint = this._getEdgePoint(this.lat, this.lng, this.maxDistance_m, arcMidAzimuth);
-        this.rotateDragMarker = new google.maps.Marker({
-            position: rotatePoint,
-            map: this.map,
-            clickable: true,
-            icon: this._createMarkerIcon('blue'),
-            draggable: true,
-            zIndex: 999,
-        });
-
-        this.rotateDragListener = this.rotateDragMarker.addListener('drag', (event) => {
-            const dragPos = event.latLng;
-            const heading = google.maps.geometry.spherical.computeHeading(center, dragPos);
-            const midAzimuth = (heading + 360) % 360;
-            this.currentAzimuth = (midAzimuth - this.#sliceWidth / 2 + 360) % 360;
-
-            this._updateRHILines();
-            this._updateArc();
-
-            // Keep marker on circle edge
-            const constrainedPoint = this._constrainToCircle(dragPos.lat(), dragPos.lng(), this.maxDistance_m);
-            this.rotateDragMarker.setPosition(constrainedPoint);
-
-            // Update arc drag marker position
-            const rangeM = this.#rangeKm * 1000;
-            const newMidAzimuth = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
-            const arcMidPos = this._getEdgePoint(this.lat, this.lng, rangeM, newMidAzimuth);
-            this.arcDragMarker.setPosition(arcMidPos);
-        });
-
-        this.rotateDragEndListener = this.rotateDragMarker.addListener('dragend', (event) => {
-            // Snap marker to circle edge at slice center
-            const midAzimuth = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
-            const newPos = this._getEdgePoint(this.lat, this.lng, this.maxDistance_m, midAzimuth);
-            this.rotateDragMarker.setPosition(newPos);
             this._dispatchRHIChanged();
         });
 
@@ -260,7 +228,6 @@ export class Profile {
 
         if (this.dragMarker) this.dragMarker.setMap(null);
         if (this.arcDragMarker) this.arcDragMarker.setMap(null);
-        if (this.rotateDragMarker) this.rotateDragMarker.setMap(null);
         if (this.line) this.line.setMap(null);
         if (this.line1) this.line1.setMap(null);
         if (this.line2) this.line2.setMap(null);
@@ -275,7 +242,6 @@ export class Profile {
         this.rotateDragEndListener = null;
         this.dragMarker = null;
         this.arcDragMarker = null;
-        this.rotateDragMarker = null;
         this.line = null;
         this.line1 = null;
         this.line2 = null;
@@ -342,11 +308,6 @@ export class Profile {
         const midAzimuth = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
         const rangeM = this.#rangeKm * 1000;
 
-        if (this.rotateDragMarker) {
-            const rotatePos = this._getEdgePoint(this.lat, this.lng, this.maxDistance_m, midAzimuth);
-            this.rotateDragMarker.setPosition(rotatePos);
-        }
-
         if (this.arcDragMarker) {
             const arcMidPos = this._getEdgePoint(this.lat, this.lng, rangeM, midAzimuth);
             this.arcDragMarker.setPosition(arcMidPos);
@@ -403,7 +364,6 @@ export class Profile {
         if (this.arc) this.arc.setMap(null);
         if (this.dragMarker) this.dragMarker.setMap(null);
         if (this.arcDragMarker) this.arcDragMarker.setMap(null);
-        if (this.rotateDragMarker) this.rotateDragMarker.setMap(null);
     }
 
     show() {
@@ -414,6 +374,5 @@ export class Profile {
         if (this.arc) this.arc.setMap(this.map);
         if (this.dragMarker) this.dragMarker.setMap(this.map);
         if (this.arcDragMarker) this.arcDragMarker.setMap(this.map);
-        if (this.rotateDragMarker) this.rotateDragMarker.setMap(this.map);
     }
 }
