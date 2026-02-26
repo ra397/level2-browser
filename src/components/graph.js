@@ -465,41 +465,72 @@ function renderRHI() {
 function renderTerrainAHI(vb) {
     if (!currentAHITerrain || !currentTerrainWidth) return '';
 
-    let svgContent = '';
+    const NO_DATA_THRESHOLD = 9000; // meters - anything above this is likely "no data"
+    const TERRAIN_COLOR = '#C4A484';
+    const NO_DATA_COLOR = '#D3D3D3'; // light gray
 
-    // Build terrain path
-    // Terrain values are in meters, we need km for the graph
-    // terrainWidth is the number of range bins
+    let svgContent = '';
     const rangeStepKm = MAX_RANGE_KM / currentTerrainWidth;
 
-    let pathPoints = [];
+    // Group terrain into segments by whether they have valid data or not
+    let segments = [];
+    let currentSegment = null;
 
-    // Start at bottom-left
-    pathPoints.push(`0,${vb.h}`);
-
-    // Add terrain profile points
     for (let i = 0; i < currentAHITerrain.length && i < currentTerrainWidth; i++) {
         const rangeKm = i * rangeStepKm;
         if (rangeKm > MAX_RANGE_KM) break;
 
-        const heightKm = currentAHITerrain[i] / 1000; // Convert meters to km
-        const p = dataToSvgAHI(rangeKm, heightKm, vb);
-        pathPoints.push(`${p.x},${p.y}`);
+        const elevation = currentAHITerrain[i];
+        const isNoData = elevation >= NO_DATA_THRESHOLD;
+        const heightKm = isNoData ? 0.5 : elevation / 1000; // Use a small height for no-data areas
+
+        if (!currentSegment || currentSegment.isNoData !== isNoData) {
+            // Start a new segment
+            if (currentSegment) {
+                segments.push(currentSegment);
+            }
+            currentSegment = {
+                isNoData,
+                points: [],
+                startRange: rangeKm
+            };
+        }
+        currentSegment.points.push({ rangeKm, heightKm });
+        currentSegment.endRange = rangeKm;
+    }
+    if (currentSegment) {
+        segments.push(currentSegment);
     }
 
-    // End at bottom-right
-    const lastX = (Math.min(currentAHITerrain.length * rangeStepKm, MAX_RANGE_KM) / MAX_RANGE_KM) * vb.w;
-    pathPoints.push(`${lastX},${vb.h}`);
+    // Render each segment
+    for (const segment of segments) {
+        const color = segment.isNoData ? NO_DATA_COLOR : TERRAIN_COLOR;
+        let pathPoints = [];
 
-    // Close the path
-    pathPoints.push(`0,${vb.h}`);
+        // Start at bottom-left of segment
+        const startP = dataToSvgAHI(segment.startRange, 0, vb);
+        pathPoints.push(`${startP.x},${vb.h}`);
 
-    svgContent += `<polygon
-          class="terrain-fill"
-          points="${pathPoints.join(' ')}"
-          fill="#C4A484"
-          fill-opacity="0.7"
-      />`;
+        // Add terrain profile points
+        for (const pt of segment.points) {
+            const p = dataToSvgAHI(pt.rangeKm, pt.heightKm, vb);
+            pathPoints.push(`${p.x},${p.y}`);
+        }
+
+        // End at bottom-right of segment
+        const endP = dataToSvgAHI(segment.endRange, 0, vb);
+        pathPoints.push(`${endP.x},${vb.h}`);
+
+        // Close the path
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        svgContent += `<polygon
+              class="terrain-fill"
+              points="${pathPoints.join(' ')}"
+              fill="${color}"
+              fill-opacity="0.7"
+          />`;
+    }
 
     return svgContent;
 }
@@ -507,33 +538,68 @@ function renderTerrainAHI(vb) {
 function renderTerrainRHI(vb, sliceWidth) {
     if (!currentRHITerrain || currentRHITerrain.length === 0) return '';
 
+    const NO_DATA_THRESHOLD = 9000; // meters
+    const TERRAIN_COLOR = '#C4A484';
+    const NO_DATA_COLOR = '#D3D3D3'; // light gray
+
     let svgContent = '';
-    let pathPoints = [];
 
-    // Start at bottom-left
-    pathPoints.push(`0,${vb.h}`);
+    // Group terrain into segments by whether they have valid data or not
+    let segments = [];
+    let currentSegment = null;
 
-    // Add terrain profile points
     for (let i = 0; i < currentRHITerrain.length; i++) {
         const azOffset = i;
-        const heightKm = currentRHITerrain[i].elevation / 1000; // Convert meters to km
-        const p = dataToSvgRHI(azOffset, heightKm, sliceWidth, vb);
-        pathPoints.push(`${p.x},${p.y}`);
+        const elevation = currentRHITerrain[i].elevation;
+        const isNoData = elevation >= NO_DATA_THRESHOLD;
+        const heightKm = isNoData ? 0.5 : elevation / 1000;
+
+        if (!currentSegment || currentSegment.isNoData !== isNoData) {
+            if (currentSegment) {
+                segments.push(currentSegment);
+            }
+            currentSegment = {
+                isNoData,
+                points: [],
+                startAzOffset: azOffset
+            };
+        }
+        currentSegment.points.push({ azOffset, heightKm });
+        currentSegment.endAzOffset = azOffset;
+    }
+    if (currentSegment) {
+        segments.push(currentSegment);
     }
 
-    // End at bottom-right
-    const lastX = ((currentRHITerrain.length - 1) / sliceWidth) * vb.w;
-    pathPoints.push(`${lastX},${vb.h}`);
+    // Render each segment
+    for (const segment of segments) {
+        const color = segment.isNoData ? NO_DATA_COLOR : TERRAIN_COLOR;
+        let pathPoints = [];
 
-    // Close the path
-    pathPoints.push(`0,${vb.h}`);
+        // Start at bottom-left of segment
+        const startP = dataToSvgRHI(segment.startAzOffset, 0, sliceWidth, vb);
+        pathPoints.push(`${startP.x},${vb.h}`);
 
-    svgContent += `<polygon
-          class="terrain-fill"
-          points="${pathPoints.join(' ')}"
-          fill="#C4A484"
-          fill-opacity="0.7"
-      />`;
+        // Add terrain profile points
+        for (const pt of segment.points) {
+            const p = dataToSvgRHI(pt.azOffset, pt.heightKm, sliceWidth, vb);
+            pathPoints.push(`${p.x},${p.y}`);
+        }
+
+        // End at bottom-right of segment
+        const endP = dataToSvgRHI(segment.endAzOffset, 0, sliceWidth, vb);
+        pathPoints.push(`${endP.x},${vb.h}`);
+
+        // Close the path
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        svgContent += `<polygon
+              class="terrain-fill"
+              points="${pathPoints.join(' ')}"
+              fill="${color}"
+              fill-opacity="0.7"
+          />`;
+    }
 
     return svgContent;
 }

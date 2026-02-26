@@ -530,6 +530,8 @@ function gatherProfileData(radarId, azimuth) {
     // Get terrain slice for this azimuth
     const terrainSlice = getTerrainSliceByAzimuth(radarId, azimuth);
 
+    console.log(terrainSlice);
+
     return {
         profileData,
         azimuth,
@@ -627,6 +629,8 @@ function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
 
     const terrainSlice = getTerrainSliceByRange(radarId, startAzimuth, endAzimuth, rangeKm);
     const stationElevation = terrainData ? terrainData.terrainProfile[0] : 0;
+
+    console.log(terrainSlice);
 
     return {
         profileData,
