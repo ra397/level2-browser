@@ -33,6 +33,10 @@ let rhiRangeKm = 50;
 // AXS specific state
 let currentAXSData = null;
 let axsLineLengthKm = 0;
+let axsPending = false;
+let pendingAXSPointA = null;
+let pendingAXSPointB = null;
+let pendingAXSLineLengthKm = 0;
 
 let isFolded = true;
 let hasData = false;
@@ -104,6 +108,50 @@ function setHasData(value) {
     }
 }
 
+function updateAXSConfirmButton() {
+    const confirmBtn = document.getElementById('axsConfirmBtn');
+    if (!confirmBtn) return;
+
+    if (currentMode === 'AXS') {
+        confirmBtn.style.display = 'inline-block';
+        confirmBtn.textContent = axsPending ? 'Recalculate' : 'Calculate';
+    } else {
+        confirmBtn.style.display = 'none';
+    }
+}
+
+document.addEventListener('profile-axs-line-updated', (e) => {
+    if (currentMode !== 'AXS') return;
+
+    const { pointA, pointB, lineLengthKm } = e.detail;
+
+    pendingAXSPointA = pointA;
+    pendingAXSPointB = pointB;
+    pendingAXSLineLengthKm = lineLengthKm;
+    axsPending = true;
+
+    // Update the profile info to show pending line length
+    axsLineLengthKm = lineLengthKm;
+    updateProfileInfo();
+    updateAXSConfirmButton();
+});
+
+document.addEventListener('profile-axs-confirm-requested', () => {
+    if (!pendingAXSPointA || !pendingAXSPointB) return;
+
+    document.dispatchEvent(new CustomEvent('profile-axs-changed', {
+        detail: {
+            pointA: pendingAXSPointA,
+            pointB: pendingAXSPointB,
+            lineLengthKm: pendingAXSLineLengthKm,
+            radarId: null, // Will use active radar
+        }
+    }));
+
+    axsPending = false;
+    updateAXSConfirmButton();
+});
+
 // ─── SVG Setup ───
 const svg = document.getElementById('beamSvg');
 const container = document.getElementById('graphContainer');
@@ -129,6 +177,7 @@ function createModeSwitcher() {
                     AXS
                 </label>
             </div>
+            <button id="axsConfirmBtn" class="axs-confirm-btn" style="display: none;">Calculate</button>
             <div class="profile-info" id="profileInfo"></div>
         `;
 
@@ -141,11 +190,20 @@ function createModeSwitcher() {
             render();
             renderAxes();
             updateProfileInfo();
+            updateAXSConfirmButton();
             document.dispatchEvent(new CustomEvent('profile-mode-changed', {
                 detail: { mode: currentMode }
             }));
         }
     });
+
+    // Confirm button click handler
+    const confirmBtn = document.getElementById('axsConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('profile-axs-confirm-requested'));
+        });
+    }
 }
 
 function updateProfileInfo() {
@@ -486,10 +544,10 @@ function renderAXS() {
     let svgContent = '';
 
     svgContent += `<defs>
-            <clipPath id="plotClip">
-                <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
-            </clipPath>
-        </defs>`;
+              <clipPath id="plotClip">
+                  <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+              </clipPath>
+          </defs>`;
 
     svgContent += `<g clip-path="url(#plotClip)">`;
 
@@ -519,8 +577,9 @@ function renderAXS() {
                 ? currentAXSData[i + 1].distanceKm
                 : distanceKm + 1;
 
-            // Draw each elevation gate
-            for (const gate of sample.gates) {
+            // Draw each elevation gate (highest first, lowest last)
+            for (let g = sample.gates.length - 1; g >= 0; g--) {
+                const gate = sample.gates[g];
                 const color = valueToColor(gate.value, currentPalette, currentMinValue, currentMaxValue);
                 if (!color) continue;
 
@@ -530,23 +589,25 @@ function renderAXS() {
                 const bottomLeft = dataToSvgAXS(distanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
 
                 svgContent += `<polygon
-                        class="gate-fill"
-                        data-sample-idx="${i}"
-                        data-elevation="${gate.elevation}"
-                        data-value="${gate.value}"
-                        data-distance="${distanceKm}"
-                        points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
-    ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
-                        fill="${color}"
-                        stroke="none"
-                    />`;
+                          class="gate-fill"
+                          data-sample-idx="${i}"
+                          data-elevation="${gate.elevation}"
+                          data-value="${gate.value}"
+                          data-distance="${distanceKm}"
+                          points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+      ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                          fill="${color}"
+                          stroke="none"
+                      />`;
             }
         }
     }
 
     // Crosshairs
-    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none" />`;
-    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none" />`;
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
+  />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
+  />`;
 
     svgContent += `</g>`;
     svg.innerHTML = svgContent;
@@ -1115,6 +1176,9 @@ document.addEventListener('profile-axs-data-ready', (e) => {
     currentMaxValue = maxValue;
     currentUnits = units;
 
+    axsPending = false;
+    updateAXSConfirmButton();
+
     setHasData(true);
 
     render();
@@ -1135,6 +1199,10 @@ document.addEventListener('overlay-cleared', () => {
     stationElevationKm = 0;
     currentAzimuth = 0;
     axsLineLengthKm = 0;
+    axsPending = false;
+    pendingAXSPointA = null;
+    pendingAXSPointB = null;
+    pendingAXSLineLengthKm = 0;
 
     setHasData(false);
     setFolded(true);
@@ -1142,6 +1210,19 @@ document.addEventListener('overlay-cleared', () => {
     render();
     renderAxes();
     updateProfileInfo();
+    updateAXSConfirmButton();
+});
+
+document.addEventListener('radar-switched', (e) => {
+    const { radarId } = e.detail;
+
+    // Tell main.js to sync the profile mode and refresh data
+    document.dispatchEvent(new CustomEvent('sync-profile-mode', {
+        detail: {
+            radarId,
+            mode: currentMode
+        }
+    }));
 });
 
 // ─── Init ───

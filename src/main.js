@@ -97,11 +97,24 @@ function setActiveRadar(radarId) {
         }
     }));
 
-    // Refresh profile data for graph component
-    if (activeRadar && activeRadar.profile) {
-        refreshProfileData(radarId);
-    }
+    // Request the graph to sync the profile mode and refresh data
+    document.dispatchEvent(new CustomEvent('radar-switched', {
+        detail: { radarId }
+    }));
 }
+
+document.addEventListener('sync-profile-mode', (e) => {
+    const { radarId, mode } = e.detail;
+
+    const radarState = radars.get(radarId);
+    if (!radarState || !radarState.profile) return;
+
+    // Sync the profile's mode to match the graph
+    radarState.profile.setMode(mode);
+
+    // Now refresh the profile data
+    refreshProfileData(radarId);
+});
 
 // Fetch station metadata once at startup
 fetch(`${import.meta.env.BASE_URL}data/nexrad.json`)
@@ -657,6 +670,9 @@ function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
 }
 
 function gatherAXSData(pointA, pointB) {
+    const activeRadar = getActiveRadar();
+    if (!activeRadar || !activeRadar.radar) return null;
+
     const lineLengthM = google.maps.geometry.spherical.computeDistanceBetween(
         new google.maps.LatLng(pointA.lat, pointA.lng),
         new google.maps.LatLng(pointB.lat, pointB.lng)
@@ -665,11 +681,7 @@ function gatherAXSData(pointA, pointB) {
 
     if (lineLengthKm < 1) return null;
 
-    // Determine moment and config from active radar
-    const activeRadar = getActiveRadar();
-    if (!activeRadar) return null;
-
-    const moment = activeRadar.moment;
+    const { radar, moment, station } = activeRadar;
     const config = PRODUCT_CONFIG[moment];
 
     // Calculate heading from A to B
@@ -677,6 +689,19 @@ function gatherAXSData(pointA, pointB) {
         new google.maps.LatLng(pointA.lat, pointA.lng),
         new google.maps.LatLng(pointB.lat, pointB.lng)
     );
+
+    // Get unique elevation angles
+    const seenElevations = new Set();
+    const sweepsToUse = [];
+
+    for (const sweep of radar.sweeps) {
+        const elevRounded = sweep.elevation.toFixed(1);
+        if (!seenElevations.has(elevRounded)) {
+            seenElevations.add(elevRounded);
+            sweepsToUse.push(sweep);
+        }
+    }
+    sweepsToUse.sort((a, b) => a.elevation - b.elevation);
 
     const samples = [];
 
@@ -691,57 +716,25 @@ function gatherAXSData(pointA, pointB) {
         const sampleLat = samplePoint.lat();
         const sampleLng = samplePoint.lng();
 
-        // Find which radar covers this point
-        const radarForPoint = findRadarForPoint(sampleLat, sampleLng);
-
-        if (!radarForPoint) {
-            // No radar covers this point
-            samples.push({
-                distanceKm: distKm,
-                lat: sampleLat,
-                lng: sampleLng,
-                radarId: null,
-                rangeFromRadar: null,
-                gates: []
-            });
-            continue;
-        }
-
-        // Calculate azimuth and range from this radar to the sample point
-        const radarLat = radarForPoint.station.lat;
-        const radarLng = radarForPoint.station.lng;
-
+        // Calculate azimuth and range from radar to sample point
         const rangeM = google.maps.geometry.spherical.computeDistanceBetween(
-            new google.maps.LatLng(radarLat, radarLng),
+            new google.maps.LatLng(station.lat, station.lng),
             samplePoint
         );
         const rangeKm = rangeM / 1000;
 
         const azimuth = google.maps.geometry.spherical.computeHeading(
-            new google.maps.LatLng(radarLat, radarLng),
+            new google.maps.LatLng(station.lat, station.lng),
             samplePoint
         );
         const normalizedAzimuth = (azimuth + 360) % 360;
-
-        // Get unique elevation angles
-        const seenElevations = new Set();
-        const sweepsToUse = [];
-
-        for (const sweep of radarForPoint.radar.sweeps) {
-            const elevRounded = sweep.elevation.toFixed(1);
-            if (!seenElevations.has(elevRounded)) {
-                seenElevations.add(elevRounded);
-                sweepsToUse.push(sweep);
-            }
-        }
-        sweepsToUse.sort((a, b) => a.elevation - b.elevation);
 
         const gates = [];
 
         for (const sweep of sweepsToUse) {
             let radarData;
             try {
-                radarData = radarForPoint.radar.getData(sweep.index, moment);
+                radarData = radar.getData(sweep.index, moment);
             } catch (e) {
                 continue;
             }
@@ -789,7 +782,7 @@ function gatherAXSData(pointA, pointB) {
             distanceKm: distKm,
             lat: sampleLat,
             lng: sampleLng,
-            radarId: radarForPoint.id,
+            radarId: activeRadar.id,
             rangeFromRadar: rangeKm,
             gates: gates
         });
