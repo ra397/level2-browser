@@ -1027,3 +1027,55 @@ export function extractTimestampFromKey(filename) {
         parseInt(second)
     ));
 }
+
+function generateShareableUrl() {
+    const urls = [];
+    for (const [radarId, radarState] of radars) {
+        if (radarState.url) {
+            urls.push(radarState.url);
+        }
+    }
+
+    if (urls.length === 0) return null;
+
+    const params = new URLSearchParams();
+    params.set('urls', urls.join(','));
+
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+}
+
+async function loadRadarsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const urlsParam = params.get('urls');
+
+    if (!urlsParam) return;
+
+    const urls = urlsParam.split(',');
+
+    for (const url of urls) {
+        document.dispatchEvent(new CustomEvent('decode-requested', {
+            detail: { url: url.trim() }
+        }));
+        // Small delay between requests to avoid overwhelming
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+}
+
+document.addEventListener('nexradStationsReady', () => {
+    loadRadarsFromUrl();
+});
+
+document.addEventListener('share-link-requested', () => {
+    const shareableUrl = generateShareableUrl();
+
+    if (!shareableUrl) {
+        alert('No radars to share');
+        return;
+    }
+
+    navigator.clipboard.writeText(shareableUrl).then(() => {
+        alert('Link copied to clipboard');
+    }).catch(() => {
+        alert('Failed to copy link to clipboard');
+    });
+});
