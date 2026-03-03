@@ -7,6 +7,7 @@ import './components/mrms-menu.js';
 import './components/player/player.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
+import './components/settings.js';
 
 // MRMS modules
 import './mrms/api.js';
