@@ -544,12 +544,15 @@ function renderAXS() {
     let svgContent = '';
 
     svgContent += `<defs>
-              <clipPath id="plotClip">
-                  <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
-              </clipPath>
-          </defs>`;
+                <clipPath id="plotClip">
+                    <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+                </clipPath>
+            </defs>`;
 
     svgContent += `<g clip-path="url(#plotClip)">`;
+
+    // Draw terrain FIRST (behind everything)
+    svgContent += renderTerrainAXS(vb);
 
     // Grid lines - height
     const yTicks = [0, 5, 10, 15];
@@ -589,16 +592,16 @@ function renderAXS() {
                 const bottomLeft = dataToSvgAXS(distanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
 
                 svgContent += `<polygon
-                          class="gate-fill"
-                          data-sample-idx="${i}"
-                          data-elevation="${gate.elevation}"
-                          data-value="${gate.value}"
-                          data-distance="${distanceKm}"
-                          points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
-      ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
-                          fill="${color}"
-                          stroke="none"
-                      />`;
+                            class="gate-fill"
+                            data-sample-idx="${i}"
+                            data-elevation="${gate.elevation}"
+                            data-value="${gate.value}"
+                            data-distance="${distanceKm}"
+                            points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+        ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                            fill="${color}"
+                            stroke="none"
+                        />`;
             }
         }
     }
@@ -750,6 +753,77 @@ function renderTerrainRHI(vb, sliceWidth) {
               fill="${color}"
               fill-opacity="0.7"
           />`;
+    }
+
+    return svgContent;
+}
+
+function renderTerrainAXS(vb) {
+    if (!currentAXSData || currentAXSData.length === 0) return '';
+
+    const NO_DATA_THRESHOLD = 9000; // meters - anything above this is likely "no data"
+    const TERRAIN_COLOR = '#C4A484';
+    const NO_DATA_COLOR = '#D3D3D3'; // light gray
+
+    let svgContent = '';
+
+    // Group terrain into segments by whether they have valid data or not
+    let segments = [];
+    let currentSegment = null;
+
+    for (let i = 0; i < currentAXSData.length; i++) {
+        const sample = currentAXSData[i];
+        const distanceKm = sample.distanceKm;
+        const elevation = sample.terrainHeightM || 0;
+        const isNoData = elevation >= NO_DATA_THRESHOLD;
+        const heightKm = isNoData ? 15 : elevation / 1000;
+
+        if (!currentSegment || currentSegment.isNoData !== isNoData) {
+            // Start a new segment
+            if (currentSegment) {
+                segments.push(currentSegment);
+            }
+            currentSegment = {
+                isNoData,
+                points: [],
+                startDistance: distanceKm
+            };
+        }
+        currentSegment.points.push({ distanceKm, heightKm });
+        currentSegment.endDistance = distanceKm;
+    }
+    if (currentSegment) {
+        segments.push(currentSegment);
+    }
+
+    // Render each segment
+    for (const segment of segments) {
+        const color = segment.isNoData ? NO_DATA_COLOR : TERRAIN_COLOR;
+        let pathPoints = [];
+
+        // Start at bottom-left of segment
+        const startP = dataToSvgAXS(segment.startDistance, 0, axsLineLengthKm, vb);
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        // Add terrain profile points
+        for (const pt of segment.points) {
+            const p = dataToSvgAXS(pt.distanceKm, pt.heightKm, axsLineLengthKm, vb);
+            pathPoints.push(`${p.x},${p.y}`);
+        }
+
+        // End at bottom-right of segment
+        const endP = dataToSvgAXS(segment.endDistance, 0, axsLineLengthKm, vb);
+        pathPoints.push(`${endP.x},${vb.h}`);
+
+        // Close the path
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        svgContent += `<polygon
+                class="terrain-fill"
+                points="${pathPoints.join(' ')}"
+                fill="${color}"
+                fill-opacity="0.7"
+            />`;
     }
 
     return svgContent;

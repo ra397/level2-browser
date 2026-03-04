@@ -553,8 +553,6 @@ function gatherProfileData(radarId, azimuth) {
     // Get terrain slice for this azimuth
     const terrainSlice = getTerrainSliceByAzimuth(radarId, azimuth);
 
-    console.log(terrainSlice);
-
     return {
         profileData,
         azimuth,
@@ -653,8 +651,6 @@ function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
     const terrainSlice = getTerrainSliceByRange(radarId, startAzimuth, endAzimuth, rangeKm);
     const stationElevation = terrainData ? terrainData.terrainProfile[0] : 0;
 
-    console.log(terrainSlice);
-
     return {
         profileData,
         startAzimuth,
@@ -706,6 +702,8 @@ function gatherAXSData(pointA, pointB) {
 
     const samples = [];
 
+    const terrainData = radars.get(activeRadarId).terrainData.terrainProfile;
+
     // Sample at 1km intervals
     for (let distKm = 0; distKm <= lineLengthKm; distKm += 1) {
         // Calculate lat/lng at this distance along the line
@@ -752,7 +750,7 @@ function gatherAXSData(pointA, pointB) {
                 }
             }
 
-            // Find closest range index
+            // Find the closest range index
             let rangeIndex = 0;
             let minRangeDiff = Infinity;
             for (let r = 0; r < radarData.ranges.length; r++) {
@@ -779,15 +777,24 @@ function gatherAXSData(pointA, pointB) {
             });
         }
 
+        // Sample terrain height from polar terrain grid (360 azimuths × 230 range bins)
+        const terrainAzIndex = Math.round(normalizedAzimuth) % 360;
+        const terrainRangeIndex = Math.min(Math.round(rangeKm), 229);
+        const terrainHeightM = terrainData[terrainAzIndex * 230 + terrainRangeIndex];
+
         samples.push({
             distanceKm: distKm,
             lat: sampleLat,
             lng: sampleLng,
             radarId: activeRadar.id,
             rangeFromRadar: rangeKm,
-            gates: gates
+            gates: gates,
+            terrainHeightM: terrainHeightM
         });
     }
+
+    console.log(terrainData);
+    console.log(samples);
 
     return {
         samples,
