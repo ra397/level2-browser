@@ -114,7 +114,13 @@ function updateAXSConfirmButton() {
 
     if (currentMode === 'AXS') {
         confirmBtn.style.display = 'inline-block';
-        confirmBtn.textContent = axsPending ? 'Recalculate' : 'Calculate';
+        // Show "Recalculate" only if we have existing data AND there are pending changes
+        // Show "Calculate" if we haven't calculated anything yet
+        if (currentAXSData && currentAXSData.length > 0 && axsPending) {
+            confirmBtn.textContent = 'Recalculate';
+        } else {
+            confirmBtn.textContent = 'Calculate';
+        }
     } else {
         confirmBtn.style.display = 'none';
     }
@@ -187,13 +193,17 @@ function createModeSwitcher() {
             currentProfileData = null;
             currentAXSData = null;
             beams = [];
+
+            // Dispatch mode change FIRST so profile can set up and send data
+            document.dispatchEvent(new CustomEvent('profile-mode-changed', {
+                detail: { mode: currentMode }
+            }));
+
+            // Then render (by now axsLineLengthKm should be set for AXS mode)
             render();
             renderAxes();
             updateProfileInfo();
             updateAXSConfirmButton();
-            document.dispatchEvent(new CustomEvent('profile-mode-changed', {
-                detail: { mode: currentMode }
-            }));
         }
     });
 
