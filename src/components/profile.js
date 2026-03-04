@@ -169,8 +169,8 @@ export class Profile {
         this._clearMapObjects();
 
         // Initial line: from radar position, 50km north (0° azimuth)
-        const pointA = { lat: this.lat, lng: this.lng };
-        const pointB = this._getEdgePoint(this.lat, this.lng, 50000, 0); // 50km north
+        const pointA = this.#axsPointA ?? { lat: this.lat, lng: this.lng };
+        const pointB = this.#axsPointB ?? this._getEdgePoint(this.lat, this.lng, 230_000, 0);
 
         this.#axsPointA = pointA;
         this.#axsPointB = pointB;
@@ -214,58 +214,54 @@ export class Profile {
             zIndex: 1001,
         });
 
-        // Drag listener for Marker A - constrain to radar's 230km circle
-        this.axsMarkerADragListener = this.axsMarkerA.addListener('drag', (event) => {
+        // Drag listener for Marker A - constrain to 50km from point B
+        this.axsMarkerADragEndListener = this.axsMarkerA.addListener('dragend', (event) => {
             const dragPos = event.latLng;
-            const center = new google.maps.LatLng(this.lat, this.lng);
+            const pointB = new google.maps.LatLng(this.#axsPointB.lat, this.#axsPointB.lng);
+            const maxDistanceM = 230_000;
 
-            // Constrain to radar circle
-            const distFromRadar = google.maps.geometry.spherical.computeDistanceBetween(center, dragPos);
+            const distFromB = google.maps.geometry.spherical.computeDistanceBetween(pointB, dragPos);
 
             let newPos;
-            if (distFromRadar > this.maxDistance_m) {
-                // Constrain to circle edge
-                const heading = google.maps.geometry.spherical.computeHeading(center, dragPos);
-                const constrainedPoint = google.maps.geometry.spherical.computeOffset(center, this.maxDistance_m,
-                    heading);
+            if (distFromB > maxDistanceM) {
+                const heading = google.maps.geometry.spherical.computeHeading(pointB, dragPos);
+                const constrainedPoint = google.maps.geometry.spherical.computeOffset(pointB, maxDistanceM, heading);
                 newPos = { lat: constrainedPoint.lat(), lng: constrainedPoint.lng() };
-                this.axsMarkerA.setPosition(newPos);
             } else {
                 newPos = { lat: dragPos.lat(), lng: dragPos.lng() };
             }
 
+            this.axsMarkerA.setPosition(newPos);
             this.#axsPointA = newPos;
-            // Use stored pointB, not marker position
             this.axsLine.setPath([newPos, this.#axsPointB]);
+            this._dispatchAXSLineUpdated();
         });
 
         this.axsMarkerADragEndListener = this.axsMarkerA.addListener('dragend', () => {
             this._dispatchAXSLineUpdated();
         });
 
-        // Drag listener for Marker B - constrain to radar's 230km circle
-        this.axsMarkerBDragListener = this.axsMarkerB.addListener('drag', (event) => {
+        // Drag listener for Marker B - constrain to 50km from point A
+        this.axsMarkerBDragEndListener = this.axsMarkerB.addListener('dragend', (event) => {
             const dragPos = event.latLng;
-            const center = new google.maps.LatLng(this.lat, this.lng);
+            const pointA = new google.maps.LatLng(this.#axsPointA.lat, this.#axsPointA.lng);
+            const maxDistanceM = 230_000;
 
-            // Constrain to radar circle
-            const distFromRadar = google.maps.geometry.spherical.computeDistanceBetween(center, dragPos);
+            const distFromA = google.maps.geometry.spherical.computeDistanceBetween(pointA, dragPos);
 
             let newPos;
-            if (distFromRadar > this.maxDistance_m) {
-                // Constrain to circle edge
-                const heading = google.maps.geometry.spherical.computeHeading(center, dragPos);
-                const constrainedPoint = google.maps.geometry.spherical.computeOffset(center, this.maxDistance_m,
-                    heading);
+            if (distFromA > maxDistanceM) {
+                const heading = google.maps.geometry.spherical.computeHeading(pointA, dragPos);
+                const constrainedPoint = google.maps.geometry.spherical.computeOffset(pointA, maxDistanceM, heading);
                 newPos = { lat: constrainedPoint.lat(), lng: constrainedPoint.lng() };
-                this.axsMarkerB.setPosition(newPos);
             } else {
                 newPos = { lat: dragPos.lat(), lng: dragPos.lng() };
             }
 
+            this.axsMarkerB.setPosition(newPos);
             this.#axsPointB = newPos;
-            // Use stored pointA, not marker position
             this.axsLine.setPath([this.#axsPointA, newPos]);
+            this._dispatchAXSLineUpdated();
         });
 
         this.axsMarkerBDragEndListener = this.axsMarkerB.addListener('dragend', () => {

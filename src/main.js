@@ -678,8 +678,7 @@ function gatherAXSData(pointA, pointB) {
 
     if (lineLengthKm < 1) return null;
 
-    const { radar, moment, station } = activeRadar;
-    const config = PRODUCT_CONFIG[moment];
+    const config = PRODUCT_CONFIG[activeRadar.moment];
 
     // Calculate heading from A to B
     const heading = google.maps.geometry.spherical.computeHeading(
@@ -687,26 +686,29 @@ function gatherAXSData(pointA, pointB) {
         new google.maps.LatLng(pointB.lat, pointB.lng)
     );
 
-    // Get unique elevation angles
-    const seenElevations = new Set();
-    const sweepsToUse = [];
+    // Precompute unique sorted sweeps for each loaded radar
+    const sweepsByRadar = new Map();
+    for (const [radarId, radarState] of radars) {
+        if (!radarState.radar) continue;
 
-    for (const sweep of radar.sweeps) {
-        const elevRounded = sweep.elevation.toFixed(1);
-        if (!seenElevations.has(elevRounded)) {
-            seenElevations.add(elevRounded);
-            sweepsToUse.push(sweep);
+        const seenElevations = new Set();
+        const sweepsToUse = [];
+
+        for (const sweep of radarState.radar.sweeps) {
+            const elevRounded = sweep.elevation.toFixed(1);
+            if (!seenElevations.has(elevRounded)) {
+                seenElevations.add(elevRounded);
+                sweepsToUse.push(sweep);
+            }
         }
+        sweepsToUse.sort((a, b) => a.elevation - b.elevation);
+        sweepsByRadar.set(radarId, sweepsToUse);
     }
-    sweepsToUse.sort((a, b) => a.elevation - b.elevation);
 
     const samples = [];
 
-    const terrainData = radars.get(activeRadarId).terrainData.terrainProfile;
-
     // Sample at 1km intervals
     for (let distKm = 0; distKm <= lineLengthKm; distKm += 1) {
-        // Calculate lat/lng at this distance along the line
         const samplePoint = google.maps.geometry.spherical.computeOffset(
             new google.maps.LatLng(pointA.lat, pointA.lng),
             distKm * 1000,
@@ -715,7 +717,26 @@ function gatherAXSData(pointA, pointB) {
         const sampleLat = samplePoint.lat();
         const sampleLng = samplePoint.lng();
 
-        // Calculate azimuth and range from radar to sample point
+        // Find which radar covers this point (active radar has priority)
+        const coveringRadar = findRadarForPoint(sampleLat, sampleLng);
+
+        if (!coveringRadar || !coveringRadar.radar) {
+            samples.push({
+                distanceKm: distKm,
+                lat: sampleLat,
+                lng: sampleLng,
+                radarId: null,
+                rangeFromRadar: null,
+                gates: [],
+                terrainHeightM: null
+            });
+            continue;
+        }
+
+        const station = coveringRadar.station;
+        const sweepsToUse = sweepsByRadar.get(coveringRadar.id);
+
+        // Calculate azimuth and range from this radar's station
         const rangeM = google.maps.geometry.spherical.computeDistanceBetween(
             new google.maps.LatLng(station.lat, station.lng),
             samplePoint
@@ -733,7 +754,7 @@ function gatherAXSData(pointA, pointB) {
         for (const sweep of sweepsToUse) {
             let radarData;
             try {
-                radarData = radar.getData(sweep.index, moment);
+                radarData = coveringRadar.radar.getData(sweep.index, activeRadar.moment);
             } catch (e) {
                 continue;
             }
@@ -750,7 +771,7 @@ function gatherAXSData(pointA, pointB) {
                 }
             }
 
-            // Find the closest range index
+            // Find closest range index
             let rangeIndex = 0;
             let minRangeDiff = Infinity;
             for (let r = 0; r < radarData.ranges.length; r++) {
@@ -761,11 +782,9 @@ function gatherAXSData(pointA, pointB) {
                 }
             }
 
-            // Extract value
             const dataIndex = azimuthIndex * radarData.ranges.length + rangeIndex;
             const value = radarData.data[dataIndex];
 
-            // Calculate beam heights at this range
             const beamHeights = calculateBeamHeightsAtRange(rangeKm, sweep.elevation);
 
             gates.push({
@@ -777,31 +796,31 @@ function gatherAXSData(pointA, pointB) {
             });
         }
 
-        // Sample terrain height from polar terrain grid (360 azimuths × 230 range bins)
-        const terrainAzIndex = Math.round(normalizedAzimuth) % 360;
-        const terrainRangeIndex = Math.min(Math.round(rangeKm), 229);
-        const terrainHeightM = terrainData[terrainAzIndex * 230 + terrainRangeIndex];
+        // Sample terrain from this radar's terrain data
+        let terrainHeightM = null;
+        if (coveringRadar.terrainData && coveringRadar.terrainData.terrainProfile) {
+            const terrainAzIndex = Math.round(normalizedAzimuth) % 360;
+            const terrainRangeIndex = Math.min(Math.round(rangeKm), coveringRadar.terrainData.width - 1);
+            terrainHeightM = coveringRadar.terrainData.terrainProfile[terrainAzIndex * coveringRadar.terrainData.width + terrainRangeIndex];
+        }
 
         samples.push({
             distanceKm: distKm,
             lat: sampleLat,
             lng: sampleLng,
-            radarId: activeRadar.id,
+            radarId: coveringRadar.id,
             rangeFromRadar: rangeKm,
             gates: gates,
             terrainHeightM: terrainHeightM
         });
     }
 
-    console.log(terrainData);
-    console.log(samples);
-
     return {
         samples,
         lineLengthKm,
         pointA,
         pointB,
-        moment,
+        moment: activeRadar.moment,
         units: config.units,
         palette: config.palette,
         minValue: config.minValue,
