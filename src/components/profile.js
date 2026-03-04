@@ -199,7 +199,7 @@ export class Profile {
             position: pointA,
             map: this.map,
             clickable: true,
-            icon: this._createMarkerIcon('white'),
+            icon: this._createMarkerIcon('#66ff00'),
             draggable: true,
             zIndex: 1000,
         });
@@ -209,7 +209,7 @@ export class Profile {
             position: pointB,
             map: this.map,
             clickable: true,
-            icon: this._createMarkerIcon('white'),
+            icon: this._createMarkerIcon('#ff000d'),
             draggable: true,
             zIndex: 1001,
         });
