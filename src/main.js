@@ -156,14 +156,14 @@ function refreshProfileData(radarId) {
             document.dispatchEvent(new CustomEvent('profile-rhi-data-ready', { detail: data }));
         }
     } else if (profile.getMode() === 'AXS') {
-        const pointA = profile.getPointA();
-        const pointB = profile.getPointB();
-        if (pointA && pointB) {
-            const data = gatherAXSData(pointA, pointB);
-            if (data) {
-                document.dispatchEvent(new CustomEvent('profile-axs-data-ready', { detail: data }));
-            }
-        }
+        // const pointA = profile.getPointA();
+        // const pointB = profile.getPointB();
+        // if (pointA && pointB) {
+        //     const data = gatherAXSData(pointA, pointB);
+        //     if (data) {
+        //         document.dispatchEvent(new CustomEvent('profile-axs-data-ready', { detail: data }));
+        //     }
+        // }
     }
 }
 

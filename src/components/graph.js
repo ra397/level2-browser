@@ -145,17 +145,21 @@ document.addEventListener('profile-axs-line-updated', (e) => {
 document.addEventListener('profile-axs-confirm-requested', () => {
     if (!pendingAXSPointA || !pendingAXSPointB) return;
 
-    document.dispatchEvent(new CustomEvent('profile-axs-changed', {
-        detail: {
-            pointA: pendingAXSPointA,
-            pointB: pendingAXSPointB,
-            lineLengthKm: pendingAXSLineLengthKm,
-            radarId: null, // Will use active radar
-        }
-    }));
+    showLoadingScreen();
 
-    axsPending = false;
-    updateAXSConfirmButton();
+    setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('profile-axs-changed', {
+            detail: {
+                pointA: pendingAXSPointA,
+                pointB: pendingAXSPointB,
+                lineLengthKm: pendingAXSLineLengthKm,
+                radarId: null,
+            }
+        }));
+
+        axsPending = false;
+        updateAXSConfirmButton();
+    }, 0);
 });
 
 // ─── SVG Setup ───
@@ -1251,6 +1255,8 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
 document.addEventListener('profile-axs-data-ready', (e) => {
     if (currentMode !== 'AXS') return;
 
+    hideLoadingScreen();
+
     const { samples, lineLengthKm, units, palette, minValue, maxValue } = e.detail;
 
     currentAXSData = samples;
@@ -1299,6 +1305,15 @@ document.addEventListener('overlay-cleared', () => {
 
 document.addEventListener('radar-switched', (e) => {
     const { radarId } = e.detail;
+
+    if (currentMode === "AXS") {
+        currentAXSData = null;
+        axsPending = false;
+        // pendingAXSPointA = null;
+        // pendingAXSPointB = null;
+
+        render();
+    }
 
     // Tell main.js to sync the profile mode and refresh data
     document.dispatchEvent(new CustomEvent('sync-profile-mode', {
