@@ -169,8 +169,8 @@ export class Profile {
         this._clearMapObjects();
 
         // Initial line: from radar position, 50km north (0° azimuth)
-        const pointA = this.#axsPointA ?? { lat: this.lat, lng: this.lng };
-        const pointB = this.#axsPointB ?? this._getEdgePoint(this.lat, this.lng, 230_000, 0);
+        const pointA = { lat: this.lat, lng: this.lng };
+        const pointB = this._getEdgePoint(this.lat, this.lng, 230_000, 0);
 
         this.#axsPointA = pointA;
         this.#axsPointB = pointB;

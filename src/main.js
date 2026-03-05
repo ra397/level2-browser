@@ -111,6 +111,10 @@ document.addEventListener('sync-profile-mode', (e) => {
     const radarState = radars.get(radarId);
     if (!radarState || !radarState.profile) return;
 
+    if (mode === 'AXS') {
+        radarState.profile.setMode('AHI');  // Force mode change
+    }
+
     // Sync the profile's mode to match the graph
     radarState.profile.setMode(mode);
 
