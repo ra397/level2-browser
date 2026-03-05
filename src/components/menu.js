@@ -1,4 +1,5 @@
 import {getCurrentFrameTime} from "../mrms/display.js";
+import './loading-screen.js';
 
 const decodeBtn = document.getElementById('decodeBtn');
 const urlInput = document.getElementById('urlInput');
@@ -202,6 +203,8 @@ document.addEventListener('decode-success', async (e) => {
 
         await updateVolumeFileList(radarId, url);
     }
+
+    hideLoadingScreen();
 });
 
 // Listen: decode-error
@@ -214,6 +217,8 @@ document.addEventListener('decode-error', (e) => {
     // Reset View Level II button
     viewLevel2Btn.textContent = 'View Level II';
     viewLevel2Btn.disabled = false;
+
+    hideLoadingScreen();
 
     alert('Error: ' + message);
 });

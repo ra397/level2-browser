@@ -8,6 +8,7 @@ import './components/player/player.js';
 import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
 import './components/settings.js';
+import './components/loading-screen.js';
 
 // MRMS modules
 import './mrms/api.js';
@@ -222,6 +223,8 @@ function visualizeRadar(radarId) {
 
 document.addEventListener('decode-requested', async (e) => {
     const { url } = e.detail;
+
+    showLoadingScreen();
 
     const radarId = parseRadarId(url);
     if (!radarId) {
