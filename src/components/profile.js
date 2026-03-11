@@ -168,12 +168,14 @@ export class Profile {
     _setupAXS() {
         this._clearMapObjects();
 
-        // Initial line: from radar position, 50km north (0° azimuth)
-        const pointA = { lat: this.lat, lng: this.lng };
-        const pointB = this._getEdgePoint(this.lat, this.lng, 230_000, 0);
+        // Only set initial points if not already set (preserve state)
+        if (!this.#axsPointA || !this.#axsPointB) {
+            this.#axsPointA = { lat: this.lat, lng: this.lng };
+            this.#axsPointB = this._getEdgePoint(this.lat, this.lng, 230_000, 0);
+        }
 
-        this.#axsPointA = pointA;
-        this.#axsPointB = pointB;
+        const pointA = this.#axsPointA;
+        const pointB = this.#axsPointB;
 
         this.circle = new google.maps.Circle({
             center: { lat: this.lat, lng: this.lng },
