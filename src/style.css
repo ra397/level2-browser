@@ -156,7 +156,7 @@ body {
     gap: 8px;
     margin-bottom: 12px;
     padding: 10px 12px;
-    background: #F2F2F7;
+    background: #eee;
     border-radius: 10px;
 }
 
@@ -389,7 +389,7 @@ body {
     all: unset;
     width: 36px;
     height: 36px;
-    background: #F2F2F7;
+    background: #eee;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -430,4 +430,38 @@ body {
 #viewLevel2Btn {
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Unified Radio Button Styles */
+.radio-row label,
+.settings-option,
+.product-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--font-color);
+    cursor: pointer;
+}
+
+.radio-row label input[type="radio"],
+.settings-option input[type="radio"],
+.product-radio-item input[type="radio"] {
+    cursor: pointer;
+    margin: 0;
+    /* Remove accent-color to use browser default, matching momentList */
+}
+
+/* MRMS product list - keep vertical layout */
+#product-menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Settings options - keep horizontal layout */
+.settings-options {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
 }

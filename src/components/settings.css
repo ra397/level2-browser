@@ -34,17 +34,3 @@
     display: flex;
     gap: 16px;
 }
-
-.settings-option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #333;
-    cursor: pointer;
-}
-
-.settings-option input[type="radio"] {
-    cursor: pointer;
-    accent-color: #5c2d91;
-}
