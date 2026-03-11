@@ -25,6 +25,7 @@ import {Profile} from "./components/profile.js";
 import './components/graph.js';
 import {getCurrentMode} from "./components/mode-toggle.js";
 import {extractLevel2Timestamp} from "./components/menu.js";
+import {getCurrentFrameTime} from "./mrms/display.js";
 import {setCloseTimeoutDisabled} from "./components/sidebar.js";
 
 const PRODUCT_CONFIG = {
@@ -53,7 +54,8 @@ function createRadarState(id, station, radarDecoder, url, terrainData) {
         terrainData,
         url,
         timestamp: null, // extracted from URL
-        opacity: 1.0
+        opacity: 1.0,
+        mrmsFrameTime: null
     };
 }
 
@@ -268,6 +270,7 @@ document.addEventListener('decode-requested', async (e) => {
 
         // Extract timestamp from URL
         radarState.timestamp = extractLevel2Timestamp(url);
+        radarState.mrmsFrameTime = getCurrentFrameTime(); // may be null if not loaded via MRMS
 
         radars.set(radarId, radarState);
 
@@ -1113,3 +1116,15 @@ document.addEventListener('share-link-requested', () => {
         alert('Failed to copy link to clipboard');
     });
 });
+
+export function getLoadedRadars() {
+    const result = [];
+    for (const [radarId, radarState] of radars) {
+        result.push({
+            radarId,
+            url: radarState.url,
+            mrmsFrameTime: radarState.mrmsFrameTime
+        });
+    }
+    return result;
+}

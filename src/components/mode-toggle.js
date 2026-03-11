@@ -1,3 +1,7 @@
+import { getCurrentFrameTime } from "../mrms/display.js";
+import { getLoadedRadars } from "../main.js";
+import { findNearestLevel2File } from "./menu.js";
+
 // Mode Toggle Controller - switches between MRMS and Level II modes
 
 const modeMrmsBtn = document.getElementById('mode-mrms');
@@ -39,7 +43,45 @@ function setMode(mode) {
 }
 
 modeMrmsBtn.addEventListener('click', () => setMode('mrms'));
-modeLevel2Btn.addEventListener('click', () => setMode('level2'));
+modeLevel2Btn.addEventListener('click', async () => {
+    // Check if we need to prompt for update
+    if (currentMode === 'mrms' && level2HasData) {
+        const currentMrmsTime = getCurrentFrameTime();
+        if (currentMrmsTime) {
+            const loadedRadars = getLoadedRadars();
+
+            // Find which radars would get a different file
+            const radarsToUpdate = [];
+            for (const { radarId, url } of loadedRadars) {
+                try {
+                    const newUrl = await findNearestLevel2File(radarId, currentMrmsTime);
+                    if (newUrl && newUrl !== url) {
+                        radarsToUpdate.push({ radarId, newUrl });
+                    }
+                } catch (err) {
+                    console.error(`Error checking ${radarId}:`, err);
+                }
+            }
+
+            if (radarsToUpdate.length > 0) {
+                const radarList = radarsToUpdate.map(r => r.radarId).join(', ');
+                const confirmed = confirm(
+                    `The MRMS timestamp has changed. ${radarsToUpdate.length} radar(s) (${radarList}) have newer data available. Would you like to update them?`
+                );
+
+                if (confirmed) {
+                    for (const { newUrl } of radarsToUpdate) {
+                        document.dispatchEvent(new CustomEvent('decode-requested', {
+                            detail: { url: newUrl }
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    setMode('level2');
+});
 
 // Track when MRMS has data
 document.addEventListener('mrms-files-total', (e) => {

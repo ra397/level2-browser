@@ -566,7 +566,7 @@ async function navigateToNextVolume() {
 }
 
 // Find the nearest Level II file to the given time
-async function findNearestLevel2File(radarId, targetTime) {
+export async function findNearestLevel2File(radarId, targetTime) {
     const year = targetTime.getUTCFullYear();
     const month = String(targetTime.getUTCMonth() + 1).padStart(2, '0');
     const day = String(targetTime.getUTCDate()).padStart(2, '0');
