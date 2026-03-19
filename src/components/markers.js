@@ -5,8 +5,10 @@ import {mapReady} from "./map.js";
 let nexradMarkers = null;
 
 mapReady.then(() => {
-    nexradMarkers = new MarkerCollection(map);
-
+    nexradMarkers = new MarkerCollection(map, {
+        selectable: true,
+        selectedColor: "#FFED29"
+    });
     document.addEventListener('nexradStationsReady', (e) => {
         const stations = e.detail;
         for (const station of stations) {

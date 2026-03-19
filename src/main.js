@@ -9,6 +9,10 @@ import {NexradLevel2} from "./decoder/NexradLevel2.js";
 import "./components/markers.js";
 import './components/settings.js';
 import './components/loading-screen.js';
+import './layers/terrain.js';
+import './layers/usgs.js';
+import './layers/river.js';
+import './components/collapsable.js';
 
 // MRMS modules
 import './mrms/api.js';

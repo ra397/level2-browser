@@ -17,6 +17,7 @@
     <div id="sidebar">
         <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>
         <span class="sidebar-item" data-menu="level2-menu">Level II</span>
+        <span class="sidebar-item" data-menu="map-layers">Layers</span>
         <span class="sidebar-item" id="exportBtn">Export</span>
         <span class="sidebar-item" data-menu="settings-menu">Settings</span>
     </div>
@@ -155,6 +156,103 @@
                 <button class="clear-btn" id="clearOverlayBtn">Clear</button>
             </div>
         </div>
+    </div>
+
+    <div id="map-layers" class="hidden">
+        <div class="menu-header">
+            <h2>Map Layers</h2>
+            <p class="menu-subtitle">Manage the visibility and style of each layer.</p>
+        </div>
+
+        <ul class="layers-list">
+            <li class="layer-item" data-layer="usgs">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">USGS Gauges</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Color:</label>
+                            <div class="color-wrapper">
+                                <input type="color" value="#008000">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Size:</label>
+                            <input type="number" value="2.0" min="2.0" max="4.5" step="0.5" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            <li class="layer-item" data-layer="river-network">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">River Network</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Color:</label>
+                            <div class="color-wrapper">
+                                <input type="color" value="#46bcec">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Size:</label>
+                            <input type="number" value="1.0" min="0.5" max="4.5" step="0.5" inputmode="decimal">
+                        </div>
+                        <div class="control-group full-width">
+                            <div class="control-label-row">
+                                <label>Opacity</label>
+                                <span id="river-network-opacity-label">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" class="range-slider">
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            <li class="layer-item" data-layer="terrain">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">Terrain Layer</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group full-width">
+                            <div class="control-label-row">
+                                <label>Opacity</label>
+                                <span id="terrain-opacity-label">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" class="range-slider">
+                        </div>
+                    </div>
+                </div>
+            </li>
+        </ul>
     </div>
 
     <div id="settings-menu" class="hidden">
