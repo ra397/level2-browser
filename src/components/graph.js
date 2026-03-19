@@ -30,6 +30,14 @@ let rhiStartAzimuth = 0;
 let rhiEndAzimuth = 15;
 let rhiRangeKm = 50;
 
+// AXS specific state
+let currentAXSData = null;
+let axsLineLengthKm = 0;
+let axsPending = false;
+let pendingAXSPointA = null;
+let pendingAXSPointB = null;
+let pendingAXSLineLengthKm = 0;
+
 let isFolded = true;
 let hasData = false;
 
@@ -100,6 +108,60 @@ function setHasData(value) {
     }
 }
 
+function updateAXSConfirmButton() {
+    const confirmBtn = document.getElementById('axsConfirmBtn');
+    if (!confirmBtn) return;
+
+    if (currentMode === 'AXS') {
+        confirmBtn.style.display = 'inline-block';
+        // Show "Recalculate" only if we have existing data AND there are pending changes
+        // Show "Calculate" if we haven't calculated anything yet
+        if (currentAXSData && currentAXSData.length > 0 && axsPending) {
+            confirmBtn.textContent = 'Recalculate';
+        } else {
+            confirmBtn.textContent = 'Calculate';
+        }
+    } else {
+        confirmBtn.style.display = 'none';
+    }
+}
+
+document.addEventListener('profile-axs-line-updated', (e) => {
+    if (currentMode !== 'AXS') return;
+
+    const { pointA, pointB, lineLengthKm } = e.detail;
+
+    pendingAXSPointA = pointA;
+    pendingAXSPointB = pointB;
+    pendingAXSLineLengthKm = lineLengthKm;
+    axsPending = true;
+
+    // Update the profile info to show pending line length
+    axsLineLengthKm = lineLengthKm;
+    updateProfileInfo();
+    updateAXSConfirmButton();
+});
+
+document.addEventListener('profile-axs-confirm-requested', () => {
+    if (!pendingAXSPointA || !pendingAXSPointB) return;
+
+    showLoadingScreen();
+
+    setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('profile-axs-changed', {
+            detail: {
+                pointA: pendingAXSPointA,
+                pointB: pendingAXSPointB,
+                lineLengthKm: pendingAXSLineLengthKm,
+                radarId: null,
+            }
+        }));
+
+        axsPending = false;
+        updateAXSConfirmButton();
+    }, 0);
+});
+
 // ─── SVG Setup ───
 const svg = document.getElementById('beamSvg');
 const container = document.getElementById('graphContainer');
@@ -111,32 +173,51 @@ function createModeSwitcher() {
     if (!titleBar) return;
 
     titleBar.innerHTML = `
-          <div class="mode-switcher">
-              <label>
-                  <input type="radio" name="profileMode" value="AHI" checked>
-                  AHI
-              </label>
-              <label>
-                  <input type="radio" name="profileMode" value="RHI">
-                  RHI
-              </label>
-          </div>
-          <div class="profile-info" id="profileInfo"></div>
-      `;
+            <div class="mode-switcher">
+                <label>
+                    <input type="radio" name="profileMode" value="AHI" checked>
+                    AHI
+                </label>
+                <label>
+                    <input type="radio" name="profileMode" value="RHI">
+                    RHI
+                </label>
+                <label>
+                    <input type="radio" name="profileMode" value="AXS">
+                    AXS
+                </label>
+            </div>
+            <button id="axsConfirmBtn" class="axs-confirm-btn" style="display: none;">Calculate</button>
+            <div class="profile-info" id="profileInfo"></div>
+        `;
 
     titleBar.addEventListener('change', (e) => {
         if (e.target.name === 'profileMode') {
             currentMode = e.target.value;
             currentProfileData = null;
+            currentAXSData = null;
             beams = [];
-            render();
-            renderAxes();
-            updateProfileInfo();
+
+            // Dispatch mode change FIRST so profile can set up and send data
             document.dispatchEvent(new CustomEvent('profile-mode-changed', {
                 detail: { mode: currentMode }
             }));
+
+            // Then render (by now axsLineLengthKm should be set for AXS mode)
+            render();
+            renderAxes();
+            updateProfileInfo();
+            updateAXSConfirmButton();
         }
     });
+
+    // Confirm button click handler
+    const confirmBtn = document.getElementById('axsConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('profile-axs-confirm-requested'));
+        });
+    }
 }
 
 function updateProfileInfo() {
@@ -145,8 +226,10 @@ function updateProfileInfo() {
 
     if (currentMode === 'AHI') {
         profileInfo.textContent = `Azimuth: ${currentAzimuth.toFixed(1)}°`;
-    } else {
+    } else if (currentMode === 'RHI') {
         profileInfo.textContent = `Range: ${rhiRangeKm.toFixed(2)} km`;
+    } else if (currentMode === 'AXS') {
+        profileInfo.textContent = `Length: ${axsLineLengthKm.toFixed(1)} km`;
     }
 }
 
@@ -205,6 +288,12 @@ function dataToSvgAHI(rangeKm, heightKm, vb) {
 
 function dataToSvgRHI(azimuthOffset, heightKm, sliceWidth, vb) {
     const x = (azimuthOffset / sliceWidth) * vb.w;
+    const y = vb.h - (heightKm / MAX_HEIGHT_KM) * vb.h;
+    return { x, y };
+}
+
+function dataToSvgAXS(distanceKm, heightKm, lineLengthKm, vb) {
+    const x = (distanceKm / lineLengthKm) * vb.w;
     const y = vb.h - (heightKm / MAX_HEIGHT_KM) * vb.h;
     return { x, y };
 }
@@ -462,6 +551,85 @@ function renderRHI() {
     svg.innerHTML = svgContent;
 }
 
+function renderAXS() {
+    const vb = getViewBox();
+    svg.setAttribute('viewBox', `0 0 ${vb.w} ${vb.h}`);
+
+    let svgContent = '';
+
+    svgContent += `<defs>
+                <clipPath id="plotClip">
+                    <rect x="0" y="0" width="${vb.w}" height="${vb.h}" />
+                </clipPath>
+            </defs>`;
+
+    svgContent += `<g clip-path="url(#plotClip)">`;
+
+    // Draw terrain FIRST (behind everything)
+    svgContent += renderTerrainAXS(vb);
+
+    // Grid lines - height
+    const yTicks = [0, 5, 10, 15];
+    for (const yk of yTicks) {
+        const p = dataToSvgAXS(0, yk, axsLineLengthKm, vb);
+        svgContent += `<line x1="0" y1="${p.y}" x2="${vb.w}" y2="${p.y}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Vertical grid lines (distance)
+    const distStep = axsLineLengthKm <= 50 ? 10 : axsLineLengthKm <= 100 ? 20 : 50;
+    for (let d = 0; d <= axsLineLengthKm; d += distStep) {
+        const x = (d / axsLineLengthKm) * vb.w;
+        svgContent += `<line x1="${x}" y1="0" x2="${x}" y2="${vb.h}" stroke="#141d30" stroke-width="0.5" />`;
+    }
+
+    // Draw data
+    if (currentAXSData && currentAXSData.length > 0 && currentPalette) {
+        // For each sample point
+        for (let i = 0; i < currentAXSData.length; i++) {
+            const sample = currentAXSData[i];
+            if (!sample.gates || sample.gates.length === 0) continue;
+
+            const distanceKm = sample.distanceKm;
+            const nextDistanceKm = i < currentAXSData.length - 1
+                ? currentAXSData[i + 1].distanceKm
+                : distanceKm + 1;
+
+            // Draw each elevation gate (highest first, lowest last)
+            for (let g = sample.gates.length - 1; g >= 0; g--) {
+                const gate = sample.gates[g];
+                const color = valueToColor(gate.value, currentPalette, currentMinValue, currentMaxValue);
+                if (!color) continue;
+
+                const topLeft = dataToSvgAXS(distanceKm, gate.beamTopKm, axsLineLengthKm, vb);
+                const topRight = dataToSvgAXS(nextDistanceKm, gate.beamTopKm, axsLineLengthKm, vb);
+                const bottomRight = dataToSvgAXS(nextDistanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
+                const bottomLeft = dataToSvgAXS(distanceKm, gate.beamBottomKm, axsLineLengthKm, vb);
+
+                svgContent += `<polygon
+                            class="gate-fill"
+                            data-sample-idx="${i}"
+                            data-elevation="${gate.elevation}"
+                            data-value="${gate.value}"
+                            data-distance="${distanceKm}"
+                            points="${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y}
+        ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}"
+                            fill="${color}"
+                            stroke="none"
+                        />`;
+            }
+        }
+    }
+
+    // Crosshairs
+    svgContent += `<line id="crosshairX" class="crosshair" x1="0" y1="0" x2="0" y2="${vb.h}" style="display:none"
+  />`;
+    svgContent += `<line id="crosshairY" class="crosshair" x1="0" y1="0" x2="${vb.w}" y2="0" style="display:none"
+  />`;
+
+    svgContent += `</g>`;
+    svg.innerHTML = svgContent;
+}
+
 function renderTerrainAHI(vb) {
     if (!currentAHITerrain || !currentTerrainWidth) return '';
 
@@ -604,11 +772,84 @@ function renderTerrainRHI(vb, sliceWidth) {
     return svgContent;
 }
 
+function renderTerrainAXS(vb) {
+    if (!currentAXSData || currentAXSData.length === 0) return '';
+
+    const NO_DATA_THRESHOLD = 9000; // meters - anything above this is likely "no data"
+    const TERRAIN_COLOR = '#C4A484';
+    const NO_DATA_COLOR = '#D3D3D3'; // light gray
+
+    let svgContent = '';
+
+    // Group terrain into segments by whether they have valid data or not
+    let segments = [];
+    let currentSegment = null;
+
+    for (let i = 0; i < currentAXSData.length; i++) {
+        const sample = currentAXSData[i];
+        const distanceKm = sample.distanceKm;
+        const elevation = sample.terrainHeightM || 0;
+        const isNoData = elevation >= NO_DATA_THRESHOLD;
+        const heightKm = isNoData ? 15 : elevation / 1000;
+
+        if (!currentSegment || currentSegment.isNoData !== isNoData) {
+            // Start a new segment
+            if (currentSegment) {
+                segments.push(currentSegment);
+            }
+            currentSegment = {
+                isNoData,
+                points: [],
+                startDistance: distanceKm
+            };
+        }
+        currentSegment.points.push({ distanceKm, heightKm });
+        currentSegment.endDistance = distanceKm;
+    }
+    if (currentSegment) {
+        segments.push(currentSegment);
+    }
+
+    // Render each segment
+    for (const segment of segments) {
+        const color = segment.isNoData ? NO_DATA_COLOR : TERRAIN_COLOR;
+        let pathPoints = [];
+
+        // Start at bottom-left of segment
+        const startP = dataToSvgAXS(segment.startDistance, 0, axsLineLengthKm, vb);
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        // Add terrain profile points
+        for (const pt of segment.points) {
+            const p = dataToSvgAXS(pt.distanceKm, pt.heightKm, axsLineLengthKm, vb);
+            pathPoints.push(`${p.x},${p.y}`);
+        }
+
+        // End at bottom-right of segment
+        const endP = dataToSvgAXS(segment.endDistance, 0, axsLineLengthKm, vb);
+        pathPoints.push(`${endP.x},${vb.h}`);
+
+        // Close the path
+        pathPoints.push(`${startP.x},${vb.h}`);
+
+        svgContent += `<polygon
+                class="terrain-fill"
+                points="${pathPoints.join(' ')}"
+                fill="${color}"
+                fill-opacity="0.7"
+            />`;
+    }
+
+    return svgContent;
+}
+
 function render() {
     if (currentMode === 'AHI') {
         renderAHI();
-    } else {
+    } else if (currentMode === 'RHI') {
         renderRHI();
+    } else if (currentMode === 'AXS') {
+        renderAXS();
     }
 }
 
@@ -654,11 +895,39 @@ function renderAxesRHI() {
     if (xTitle) xTitle.textContent = 'Azimuth (°)';
 }
 
+function renderAxesAXS() {
+    const yLabels = document.getElementById('yLabels');
+    const xLabels = document.getElementById('xLabels');
+    const yTitle = document.querySelector('.y-axis-title');
+    const xTitle = document.querySelector('.x-axis-title');
+
+    // Y-axis: height (same as AHI/RHI)
+    const yTicks = [15, 10, 5, 0];
+    yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
+
+    // X-axis: distance along line
+    const xTicks = [];
+    const distStep = axsLineLengthKm <= 50 ? 10 : axsLineLengthKm <= 100 ? 20 : 50;
+    for (let d = 0; d <= axsLineLengthKm; d += distStep) {
+        xTicks.push(d.toFixed(0));
+    }
+    // Always include the end point if not already included
+    if (axsLineLengthKm % distStep !== 0) {
+        xTicks.push(axsLineLengthKm.toFixed(0));
+    }
+    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
+
+    if (yTitle) yTitle.textContent = 'Height (km)';
+    if (xTitle) xTitle.textContent = 'Distance (km)';
+}
+
 function renderAxes() {
     if (currentMode === 'AHI') {
         renderAxesAHI();
-    } else {
+    } else if (currentMode === 'RHI') {
         renderAxesRHI();
+    } else if (currentMode === 'AXS') {
+        renderAxesAXS();
     }
 }
 
@@ -737,6 +1006,39 @@ function findNearestBeamAndGateRHI(azimuthOffset, heightKm) {
     return { beam: bestBeam, gate: bestGate };
 }
 
+function findNearestGateAXS(distanceKm, heightKm) {
+    if (!currentAXSData || currentAXSData.length === 0) return { sample: null, gate: null };
+
+    // Find closest sample by distance
+    let bestSampleIdx = 0;
+    let minDistDiff = Infinity;
+    for (let i = 0; i < currentAXSData.length; i++) {
+        const diff = Math.abs(currentAXSData[i].distanceKm - distanceKm);
+        if (diff < minDistDiff) {
+            minDistDiff = diff;
+            bestSampleIdx = i;
+        }
+    }
+
+    const sample = currentAXSData[bestSampleIdx];
+    if (!sample || !sample.gates || sample.gates.length === 0) {
+        return { sample, gate: null };
+    }
+
+    // Find the closest gate by height
+    let bestGate = null;
+    let minHeightDiff = Infinity;
+    for (const gate of sample.gates) {
+        const diff = Math.abs(gate.beamCenterKm - heightKm);
+        if (diff < minHeightDiff) {
+            minHeightDiff = diff;
+            bestGate = gate;
+        }
+    }
+
+    return { sample, gate: bestGate };
+}
+
 container.addEventListener('mousemove', (e) => {
     const rect = container.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -789,6 +1091,45 @@ container.addEventListener('mousemove', (e) => {
               <div>AGL: ${aglKm.toFixed(2)} km</div>
               <div>Value: ${valueDisplay}</div>
           `;
+        } else {
+            tooltip.style.display = 'none';
+        }
+    } else if (currentMode === 'AXS') {
+        const distanceKm = (mx / vb.w) * axsLineLengthKm;
+        const heightKm = (1 - my / vb.h) * MAX_HEIGHT_KM;
+        const { sample, gate } = findNearestGateAXS(distanceKm, heightKm);
+
+        if (sample) {
+            tooltip.style.display = 'block';
+
+            let valueDisplay = 'No Data';
+            if (gate && gate.value !== null && !isNaN(gate.value)) {
+                valueDisplay = `${gate.value.toFixed(1)} ${currentUnits}`;
+            }
+
+            const elevDisplay = gate ? `${gate.elevation.toFixed(1)}°` : 'N/A';
+            const radarDisplay = sample.radarId || 'None';
+            const rangeDisplay = sample.rangeFromRadar ? `${sample.rangeFromRadar.toFixed(1)} km` : 'N/A';
+
+            tooltip.innerHTML = `
+                <div class="elev-label">${elevDisplay} Elevation</div>
+                <div>Distance: ${distanceKm.toFixed(1)} km</div>
+                <div>Radar: ${radarDisplay}</div>
+                <div>Range from radar: ${rangeDisplay}</div>
+                <div>ASL: ${heightKm.toFixed(2)} km</div>
+                <div>Value: ${valueDisplay}</div>
+            `;
+
+            let tx = mx + 14;
+            let ty = my - 10;
+            const tw = tooltip.offsetWidth;
+            const th = tooltip.offsetHeight;
+            const rect = container.getBoundingClientRect();
+            if (tx + tw > rect.width) tx = mx - tw - 14;
+            if (ty + th > rect.height) ty = rect.height - th - 4;
+            if (ty < 0) ty = 4;
+            tooltip.style.left = tx + 'px';
+            tooltip.style.top = ty + 'px';
         } else {
             tooltip.style.display = 'none';
         }
@@ -911,8 +1252,33 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
     updateProfileInfo();
 });
 
+document.addEventListener('profile-axs-data-ready', (e) => {
+    if (currentMode !== 'AXS') return;
+
+    hideLoadingScreen();
+
+    const { samples, lineLengthKm, units, palette, minValue, maxValue } = e.detail;
+
+    currentAXSData = samples;
+    axsLineLengthKm = lineLengthKm;
+    currentPalette = palette;
+    currentMinValue = minValue;
+    currentMaxValue = maxValue;
+    currentUnits = units;
+
+    axsPending = false;
+    updateAXSConfirmButton();
+
+    setHasData(true);
+
+    render();
+    renderAxes();
+    updateProfileInfo();
+});
+
 document.addEventListener('overlay-cleared', () => {
     currentProfileData = null;
+    currentAXSData = null;
     currentPalette = null;
     currentMinValue = 0;
     currentMaxValue = 100;
@@ -922,6 +1288,11 @@ document.addEventListener('overlay-cleared', () => {
     currentTerrainWidth = null;
     stationElevationKm = 0;
     currentAzimuth = 0;
+    axsLineLengthKm = 0;
+    axsPending = false;
+    pendingAXSPointA = null;
+    pendingAXSPointB = null;
+    pendingAXSLineLengthKm = 0;
 
     setHasData(false);
     setFolded(true);
@@ -929,6 +1300,28 @@ document.addEventListener('overlay-cleared', () => {
     render();
     renderAxes();
     updateProfileInfo();
+    updateAXSConfirmButton();
+});
+
+document.addEventListener('radar-switched', (e) => {
+    const { radarId } = e.detail;
+
+    if (currentMode === "AXS") {
+        currentAXSData = null;
+        axsPending = false;
+        // pendingAXSPointA = null;
+        // pendingAXSPointB = null;
+
+        render();
+    }
+
+    // Tell main.js to sync the profile mode and refresh data
+    document.dispatchEvent(new CustomEvent('sync-profile-mode', {
+        detail: {
+            radarId,
+            mode: currentMode
+        }
+    }));
 });
 
 // ─── Init ───

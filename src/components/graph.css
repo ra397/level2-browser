@@ -215,3 +215,18 @@
 .graph-content {
     background-color: white;
 }
+
+.axs-confirm-btn {
+    padding: 4px 12px;
+    margin-left: 10px;
+    background-color: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.axs-confirm-btn:hover {
+    background-color: #2d3748;
+}

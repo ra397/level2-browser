@@ -1,0 +1,36 @@
+#settings-menu {
+    position: absolute;
+    top: 129px;
+    right: 110px;
+    background: white;
+    z-index: 1000;
+    min-width: 200px;
+    background: var(--background-color);
+}
+
+#settings-menu .menu-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+#settings-menu .menu-header h2 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.settings-section {
+    padding: 12px 16px;
+}
+
+.settings-label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.settings-options {
+    display: flex;
+    gap: 16px;
+}

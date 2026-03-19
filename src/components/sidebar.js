@@ -91,3 +91,7 @@ export function setCloseTimeoutDisabled(disabled) {
         cancelClose(); // Clear any pending close
     }
 }
+
+document.getElementById("exportBtn").addEventListener('click', (e) => {
+    document.dispatchEvent(new CustomEvent('share-link-requested'));
+});

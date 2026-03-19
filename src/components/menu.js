@@ -1,4 +1,5 @@
 import {getCurrentFrameTime} from "../mrms/display.js";
+import './loading-screen.js';
 
 const decodeBtn = document.getElementById('decodeBtn');
 const urlInput = document.getElementById('urlInput');
@@ -33,6 +34,40 @@ let currentVolumeIndex = -1;   // Index of current file in the array
 let currentVolumeRadarId = null; // Radar ID for current volume list
 let currentVolumeDate = null;  // Date object for current volume list
 let loadedRadarIds = new Set();
+
+let currentTimezone = 'local';
+let currentRadarTimestamp = null;
+
+document.addEventListener('timezone-change', (event) => {
+    const { timezone } = event.detail;
+    currentTimezone = timezone;
+    updateTimestampDisplay();
+});
+
+function updateTimestampDisplay() {
+    if (currentRadarTimestamp) {
+        volumeSweepTimestampEl.textContent = formatLevel2Timestamp(currentRadarTimestamp);
+    }
+}
+
+function formatLevel2Timestamp(date) {
+    if (!date) return '--';
+
+    if (currentTimezone === 'utc') {
+        return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    } else {
+        const options = {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        };
+        return date.toLocaleString('en-US', options).replace(',', '') + ' Local';
+    }
+}
 
 dpadUp.addEventListener('click', () => {
     if (currentSweepIndex < currentSweeps.length - 1) {
@@ -159,13 +194,17 @@ document.addEventListener('decode-success', async (e) => {
     if (url) {
         const timestamp = extractLevel2Timestamp(url);
         if (timestamp) {
-            volumeSweepTimestampEl.textContent = timestamp.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            currentRadarTimestamp = timestamp;
+            volumeSweepTimestampEl.textContent = formatLevel2Timestamp(timestamp);
         } else {
             volumeSweepTimestampEl.textContent = '--';
+            currentRadarTimestamp = null;
         }
 
         await updateVolumeFileList(radarId, url);
     }
+
+    hideLoadingScreen();
 });
 
 // Listen: decode-error
@@ -178,6 +217,8 @@ document.addEventListener('decode-error', (e) => {
     // Reset View Level II button
     viewLevel2Btn.textContent = 'View Level II';
     viewLevel2Btn.disabled = false;
+
+    hideLoadingScreen();
 
     alert('Error: ' + message);
 });
@@ -259,6 +300,7 @@ document.addEventListener('radar-focused', async (e) => {
         // No active radar - reset the entire Level II menu
         selectedRadarIdEl.textContent = '--';
         volumeSweepTimestampEl.textContent = '--';
+        currentRadarTimestamp = null;
         updateSweepDisplay([], 0);
         sweepContainer.style.display = 'none';
         momentContainer.style.display = 'none';
@@ -295,9 +337,11 @@ document.addEventListener('radar-focused', async (e) => {
     selectedRadarIdEl.textContent = radarId;
 
     if (radar.timestamp) {
-        volumeSweepTimestampEl.textContent = radar.timestamp.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+        currentRadarTimestamp = radar.timestamp;
+        volumeSweepTimestampEl.textContent = formatLevel2Timestamp(currentRadarTimestamp);
     } else {
         volumeSweepTimestampEl.textContent = '--';
+        currentRadarTimestamp = null;
     }
 
     // Update sweeps and moments for this radar
@@ -522,7 +566,7 @@ async function navigateToNextVolume() {
 }
 
 // Find the nearest Level II file to the given time
-async function findNearestLevel2File(radarId, targetTime) {
+export async function findNearestLevel2File(radarId, targetTime) {
     const year = targetTime.getUTCFullYear();
     const month = String(targetTime.getUTCMonth() + 1).padStart(2, '0');
     const day = String(targetTime.getUTCDate()).padStart(2, '0');

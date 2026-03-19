@@ -17,6 +17,9 @@
     <div id="sidebar">
         <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>
         <span class="sidebar-item" data-menu="level2-menu">Level II</span>
+        <span class="sidebar-item" data-menu="map-layers">Layers</span>
+        <span class="sidebar-item" id="exportBtn">Export</span>
+        <span class="sidebar-item" data-menu="settings-menu">Settings</span>
     </div>
 
     <div id="timeline-wrapper">
@@ -95,29 +98,41 @@
             </div>
 
             <div class="dpad-container">
-                <button class="dpad-btn dpad-up" id="dpadUp" title="Next Sweep" disabled>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M12 8l-6 6h12z"/>
-                    </svg>
-                </button>
-                <div class="dpad-middle-row">
-                    <button class="dpad-btn dpad-left" id="dpadLeft" title="Previous Sweep" disabled>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                            <path d="M14 6l-6 6 6 6z"/>
-                        </svg>
-                    </button>
-                    <div class="dpad-center"></div>
-                    <button class="dpad-btn dpad-right" id="dpadRight" title="Next Volume Scan" disabled>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                            <path d="M10 6l6 6-6 6z"/>
-                        </svg>
-                    </button>
+                <div class="dpad-vertical-label dpad-label-top">Sweep</div>
+                <div class="dpad-row">
+                    <div class="dpad-horizontal-label dpad-label-left">Volume</div>
+                    <div class="dpad-cross">
+                        <button class="dpad-btn dpad-up" id="dpadUp" title="Next Sweep" disabled>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M12 8l-6 6h12z"/>
+                            </svg>
+                            <span class="dpad-btn-label">Up</span>
+                        </button>
+                        <div class="dpad-cross-middle">
+                            <button class="dpad-btn dpad-left" id="dpadLeft" title="Previous Volume" disabled>
+                                <span class="dpad-btn-label">Prev</span>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M14 6l-6 6 6 6z"/>
+                                </svg>
+                            </button>
+                            <div class="dpad-center"></div>
+                            <button class="dpad-btn dpad-right" id="dpadRight" title="Next Volume" disabled>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M10 6l6 6-6 6z"/>
+                                </svg>
+                                <span class="dpad-btn-label">Next</span>
+                            </button>
+                        </div>
+                        <button class="dpad-btn dpad-down" id="dpadDown" title="Previous Sweep" disabled>
+                            <span class="dpad-btn-label">Down</span>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M12 16l6-6H6z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="dpad-horizontal-label dpad-label-right">Volume</div>
                 </div>
-                <button class="dpad-btn dpad-down" id="dpadDown" title="Previous Volume Scan" disabled>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                        <path d="M12 16l6-6H6z"/>
-                    </svg>
-                </button>
+                <div class="dpad-vertical-label dpad-label-bottom">Sweep</div>
             </div>
         </div>
 
@@ -139,6 +154,122 @@
                     <span id="opacityValue">100%</span>
                 </label>
                 <button class="clear-btn" id="clearOverlayBtn">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="map-layers" class="hidden">
+        <div class="menu-header">
+            <h2>Map Layers</h2>
+            <p class="menu-subtitle">Manage the visibility and style of each layer.</p>
+        </div>
+
+        <ul class="layers-list">
+            <li class="layer-item" data-layer="usgs">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">USGS Gauges</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Color:</label>
+                            <div class="color-wrapper">
+                                <input type="color" value="#008000">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Size:</label>
+                            <input type="number" value="2.0" min="2.0" max="4.5" step="0.5" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            <li class="layer-item" data-layer="river-network">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">River Network</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Color:</label>
+                            <div class="color-wrapper">
+                                <input type="color" value="#46bcec">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Size:</label>
+                            <input type="number" value="1.0" min="0.5" max="4.5" step="0.5" inputmode="decimal">
+                        </div>
+                        <div class="control-group full-width">
+                            <div class="control-label-row">
+                                <label>Opacity</label>
+                                <span id="river-network-opacity-label">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" class="range-slider">
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            <li class="layer-item" data-layer="terrain">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">Terrain Layer</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group full-width">
+                            <div class="control-label-row">
+                                <label>Opacity</label>
+                                <span id="terrain-opacity-label">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" class="range-slider">
+                        </div>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <div id="settings-menu" class="hidden">
+        <div class="menu-header">
+            <h2>Settings</h2>
+        </div>
+        <div class="settings-section">
+            <div class="settings-label">Time Display</div>
+            <div class="settings-options">
+                <label class="settings-option">
+                    <input type="radio" name="timezone" value="local" checked>
+                    Local
+                </label>
+                <label class="settings-option">
+                    <input type="radio" name="timezone" value="utc">
+                    UTC
+                </label>
             </div>
         </div>
     </div>

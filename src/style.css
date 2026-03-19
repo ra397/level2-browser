@@ -156,7 +156,7 @@ body {
     gap: 8px;
     margin-bottom: 12px;
     padding: 10px 12px;
-    background: #F2F2F7;
+    background: #eee;
     border-radius: 10px;
 }
 
@@ -375,59 +375,420 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 8px 0;
+    gap: 2px;
+    padding: 12px;
+    background: #eee;
+    border-radius: 10px;
 }
 
-.dpad-middle-row {
+.dpad-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+}
+
+.dpad-cross {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #ddd;
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.dpad-cross-middle {
+    display: flex;
+    align-items: center;
 }
 
 .dpad-btn {
     all: unset;
-    width: 36px;
-    height: 36px;
-    background: #F2F2F7;
-    border-radius: 8px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.15s ease;
-    color: var(--font-color);
+    color: #555;
+    box-shadow:
+            0 2px 4px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    padding: 3px;
 }
 
 .dpad-btn:hover:not(:disabled) {
-    background: #E5E5EA;
+    background: linear-gradient(180deg, #ffffff, #e8e8e8);
+    color: #333;
+    box-shadow:
+            0 3px 6px rgba(0, 0, 0, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .dpad-btn:active:not(:disabled) {
-    background: #D1D1D6;
-    transform: scale(0.95);
+    background: linear-gradient(180deg, #e8e8e8, #f0f0f0);
+    transform: scale(0.96);
+    box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.1),
+            inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .dpad-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.35;
     cursor: not-allowed;
 }
 
+.dpad-btn-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: inherit;
+}
+
+.dpad-btn svg {
+    flex-shrink: 0;
+}
+
+/* Horizontal buttons: icon and label side by side */
+.dpad-left,
+.dpad-right {
+    flex-direction: row;
+    width: 52px;
+    height: 40px;
+    gap: 3px;
+}
+
+/* Vertical buttons: label and icon stacked */
+.dpad-up,
+.dpad-down {
+    width: 40px;
+    height: 52px;
+}
+
 .dpad-center {
-    width: 36px;
-    height: 36px;
-    background: transparent;
+    width: 28px;
+    height: 28px;
+    background: radial-gradient(circle, #d0d3d8, #c4c7cc);
+    border-radius: 50%;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 5px;
 }
 
-.dpad-up, .dpad-down {
-    /* Vertical buttons are centered */
+/* Axis labels */
+.dpad-vertical-label,
+.dpad-horizontal-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8e8e93;
 }
 
-.dpad-left, .dpad-right {
-    /* Horizontal buttons - will be used for volume scan navigation */
+.dpad-vertical-label {
+    padding: 2px 0;
+}
+
+.dpad-horizontal-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    padding: 0 2px;
+}
+
+.dpad-label-left {
+    transform: rotate(180deg);
 }
 
 #viewLevel2Btn {
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Unified Radio Button Styles */
+.radio-row label,
+.settings-option,
+.product-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--font-color);
+    cursor: pointer;
+}
+
+.radio-row label input[type="radio"],
+.settings-option input[type="radio"],
+.product-radio-item input[type="radio"] {
+    cursor: pointer;
+    margin: 0;
+    /* Remove accent-color to use browser default, matching momentList */
+}
+
+/* MRMS product list - keep vertical layout */
+#product-menu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Settings options - keep horizontal layout */
+.settings-options {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+}
+
+/* Map Layers Menu */
+#map-layers {
+    position: absolute;
+    top: 129px;
+    right: 110px;
+    width: 320px;
+    background: var(--background-color);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    padding: 0;
+    overflow: hidden;
+}
+
+#map-layers .menu-header {
+    padding: 16px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+#map-layers .menu-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#map-layers .menu-subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #8E8E93;
+}
+
+#map-layers .layers-list {
+    list-style: none;
+    margin: 0;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.layer-item {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e5e5e5;
+}
+
+.layer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.layer-header:hover {
+    background: #f5f5f5;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.layer-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.chevron {
+    width: 16px;
+    height: 16px;
+    stroke: #8E8E93;
+    stroke-width: 2;
+    fill: none;
+    transition: transform 0.2s ease;
+}
+
+.layer-item.expanded .chevron {
+    transform: rotate(90deg);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e5e5e5;
+    border-radius: 24px;
+    transition: 0.3s;
+}
+
+.toggle-switch .slider::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .slider {
+    background-color: #34C759;
+}
+
+.toggle-switch input:checked + .slider::before {
+    transform: translateX(20px);
+}
+
+/* Layer Controls */
+.layer-controls {
+    display: none;
+    padding: 0 12px 12px 12px;
+    background: #fafafa;
+    border-top: 1px solid #e5e5e5;
+}
+
+.layer-item.expanded .layer-controls {
+    display: block;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding-top: 12px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.control-group.full-width {
+    grid-column: span 2;
+}
+
+.control-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8E8E93;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.control-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.control-label-row span {
+    font-size: 12px;
+    color: var(--font-color);
+    font-weight: 400;
+}
+
+/* Color Picker */
+.color-wrapper {
+    position: relative;
+}
+
+.color-wrapper input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 32px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.color-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-wrapper input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+}
+
+/* Number Input */
+.control-group input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.control-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+/* Range Slider */
+.range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #e5e5e5;
+    border-radius: 2px;
+    outline: none;
+}
+
+.range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--blue);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.range-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--blue);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
