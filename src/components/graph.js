@@ -73,7 +73,7 @@ function setFolded(folded) {
         wrapper.style.width = 'fit-content'
     } else {
         wrapper.style.height = 'fit-content';
-        wrapper.style.width = '1400px';
+        wrapper.style.width = '900px';
         content.style.display = '';
         foldBtn.textContent = '−';
 
