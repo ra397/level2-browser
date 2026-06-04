@@ -9,32 +9,32 @@
 <body>
     <div id="map"></div>
 
-    <div id="mode-toggle">
-        <button id="mode-mrms" class="mode-btn active">MRMS</button>
-        <button id="mode-level2" class="mode-btn">Level II</button>
-    </div>
+<!--    <div id="mode-toggle">-->
+<!--        <button id="mode-mrms" class="mode-btn active">MRMS</button>-->
+<!--        <button id="mode-level2" class="mode-btn">Level II</button>-->
+<!--    </div>-->
 
     <div id="sidebar">
-        <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>
+<!--        <span class="sidebar-item" data-menu="mrms-menu">MRMS</span>-->
         <span class="sidebar-item" data-menu="level2-menu">Level II</span>
         <span class="sidebar-item" data-menu="map-layers">Layers</span>
         <span class="sidebar-item" id="exportBtn">Export</span>
         <span class="sidebar-item" data-menu="settings-menu">Settings</span>
     </div>
 
-    <div id="timeline-wrapper">
-        <div id="timeline-zoom-controls">
-            <button id="zoom-in-btn" aria-label="Zoom in">+</button>
-            <button id="zoom-out-btn" aria-label="Zoom out">−</button>
-        </div>
-        <div id="timeline-container">
-            <svg id="start-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='green'/></svg>
-            <svg id="stop-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='red'/></svg>
-            <svg id="current-frame-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='#3b82f6'/></svg>
-            <div id="line"></div>
-            <div id="timeline"></div>
-        </div>
-    </div>
+<!--    <div id="timeline-wrapper">-->
+<!--        <div id="timeline-zoom-controls">-->
+<!--            <button id="zoom-in-btn" aria-label="Zoom in">+</button>-->
+<!--            <button id="zoom-out-btn" aria-label="Zoom out">−</button>-->
+<!--        </div>-->
+<!--        <div id="timeline-container">-->
+<!--            <svg id="start-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='green'/></svg>-->
+<!--            <svg id="stop-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='red'/></svg>-->
+<!--            <svg id="current-frame-marker" viewBox='0 0 1 1'><polygon points='0,0 1,0 0.5,1' fill='#3b82f6'/></svg>-->
+<!--            <div id="line"></div>-->
+<!--            <div id="timeline"></div>-->
+<!--        </div>-->
+<!--    </div>-->
 
     <div id="mrms-menu" class="hidden">
         <div class="menu-header">
@@ -66,18 +66,18 @@
     </div>
 
     <div id="level2-menu" class="hidden">
-        <div id="level2-instructions">
-            <ol style="padding-left: 20px; font-size: 14px; color: #333;">
-                <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>
-                <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>
-                <li>Paste that link into the box below and click <strong>View</strong>.</li>
-            </ol>
+<!--        <div id="level2-instructions">-->
+<!--            <ol style="padding-left: 20px; font-size: 14px; color: #333;">-->
+<!--                <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>-->
+<!--                <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>-->
+<!--                <li>Paste that link into the box below and click <strong>View</strong>.</li>-->
+<!--            </ol>-->
 
-            <div class="submit-container">
-                <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" spellcheck="false">
-                <button class="submit-btn" id="decodeBtn">View</button>
-            </div>
-        </div>
+<!--            <div class="submit-container">-->
+<!--                <input type="text" id="urlInput" placeholder="Paste NEXRAD Level 2 URL" spellcheck="false">-->
+<!--                <button class="submit-btn" id="decodeBtn">View</button>-->
+<!--            </div>-->
+<!--        </div>-->
 
         <div id="level2-radar-selection" style="display: none;">
             <div class="selected-radar-info">
@@ -302,31 +302,31 @@
         </div>
     </div>
 
-    <div id="player-container">
-        <input id="player-seek" type="range" value="0" min="0" max="0">
-        <span class="player-btn" id="play-pause-btn" aria-label="Play">
-              <svg viewBox="0 0 24 24" stroke="none">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-          </span>
-        <span id="frame-timestamp"></span>
-        <div id="playback-settings-container">
-          <span class="player-btn" id="playback-settings-btn" aria-label="Settings">
-              <img src="icons/settings-icon.svg" alt="Settings">
-          </span>
-            <div id="playback-settings-menu" class="hidden">
-                <div class="playback-settings-section">
-                    <div class="playback-settings-section-title">Playback Speed</div>
-                    <div class="playback-settings-options">
-                        <button class="playback-settings-option" data-speed="0.5">0.5x</button>
-                        <button class="playback-settings-option selected" data-speed="1">1x</button>
-                        <button class="playback-settings-option" data-speed="2">2x</button>
-                        <button class="playback-settings-option" data-speed="3">3x</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<!--    <div id="player-container">-->
+<!--        <input id="player-seek" type="range" value="0" min="0" max="0">-->
+<!--        <span class="player-btn" id="play-pause-btn" aria-label="Play">-->
+<!--              <svg viewBox="0 0 24 24" stroke="none">-->
+<!--                  <polygon points="5 3 19 12 5 21 5 3"></polygon>-->
+<!--              </svg>-->
+<!--          </span>-->
+<!--        <span id="frame-timestamp"></span>-->
+<!--        <div id="playback-settings-container">-->
+<!--          <span class="player-btn" id="playback-settings-btn" aria-label="Settings">-->
+<!--              <img src="icons/settings-icon.svg" alt="Settings">-->
+<!--          </span>-->
+<!--            <div id="playback-settings-menu" class="hidden">-->
+<!--                <div class="playback-settings-section">-->
+<!--                    <div class="playback-settings-section-title">Playback Speed</div>-->
+<!--                    <div class="playback-settings-options">-->
+<!--                        <button class="playback-settings-option" data-speed="0.5">0.5x</button>-->
+<!--                        <button class="playback-settings-option selected" data-speed="1">1x</button>-->
+<!--                        <button class="playback-settings-option" data-speed="2">2x</button>-->
+<!--                        <button class="playback-settings-option" data-speed="3">3x</button>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
 
     <script type="module" src="/src/main.js"></script>
 </body>

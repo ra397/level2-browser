@@ -4,7 +4,7 @@ import { mapReady } from "../components/map.js";
 import { RasterGenerator } from "./rasterGenerator.js";
 import { overlayInfo, getProductByS3Name, buildColorMap, scaleColorMap } from "./config.js";
 import { getMRMSOverlay } from "./overlay.js";
-import { setSliderRange, setSliderValue, getPlaybackSpeed } from "../components/player/player.js";
+// import { setSliderRange, setSliderValue, getPlaybackSpeed } from "../components/player/player.js";
 import { getActiveFiles, getActiveFileCount, getActiveFile, hasFile, getFile } from "./api.js";
 import {extractTimestampFromKey} from "../main.js";
 

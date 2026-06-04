@@ -1,7 +1,7 @@
 import {getCurrentFrameTime} from "../mrms/display.js";
 import './loading-screen.js';
 
-const decodeBtn = document.getElementById('decodeBtn');
+// const decodeBtn = document.getElementById('decodeBtn');
 const urlInput = document.getElementById('urlInput');
 const sweepContainer = document.getElementById('sweepContainer');
 const momentContainer = document.getElementById('momentContainer');
@@ -147,18 +147,18 @@ function populateMoments(moments, currentMoment) {
 }
 
 // Decode button click
-decodeBtn.addEventListener('click', () => {
-    const url = urlInput.value.trim();
-    if (!url) {
-        alert('Please enter a URL');
-        return;
-    }
-
-    decodeBtn.textContent = 'Decoding...';
-    decodeBtn.disabled = true;
-
-    document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
-});
+// decodeBtn.addEventListener('click', () => {
+//     const url = urlInput.value.trim();
+//     if (!url) {
+//         alert('Please enter a URL');
+//         return;
+//     }
+//
+//     decodeBtn.textContent = 'Decoding...';
+//     decodeBtn.disabled = true;
+//
+//     document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+// });
 
 // Moment radio change
 momentList.addEventListener('change', (e) => {
@@ -182,8 +182,8 @@ document.addEventListener('decode-success', async (e) => {
 
     sweepContainer.style.display = '';
 
-    decodeBtn.textContent = 'View';
-    decodeBtn.disabled = false;
+    // decodeBtn.textContent = 'View';
+    // decodeBtn.disabled = false;
 
     updateSweepDisplay(sweeps, 0);
     populateMoments(moments, currentMoment);
@@ -211,8 +211,8 @@ document.addEventListener('decode-success', async (e) => {
 document.addEventListener('decode-error', (e) => {
     const { message } = e.detail;
 
-    decodeBtn.textContent = 'Decode';
-    decodeBtn.disabled = false;
+    // decodeBtn.textContent = 'Decode';
+    // decodeBtn.disabled = false;
 
     // Reset View Level II button
     viewLevel2Btn.textContent = 'View Level II';

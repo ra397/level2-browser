@@ -27,7 +27,7 @@ import { updateLevel2Legend, hideLegend, clearLevel2Legend } from "./components/
 import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
-import {getCurrentMode} from "./components/mode-toggle.js";
+// import {getCurrentMode} from "./components/mode-toggle.js";
 import {extractLevel2Timestamp} from "./components/menu.js";
 import {getCurrentFrameTime} from "./mrms/display.js";
 import {setCloseTimeoutDisabled} from "./components/sidebar.js";
@@ -398,12 +398,34 @@ document.addEventListener('opacity-changed', (e) => {
     }
 });
 
-document.addEventListener('radar-marker-clicked', (e) => {
+function onRadarMarkerClicked(e) {
     const { radarId } = e.detail;
+
+    /*
+    TODO:
+    if radars is empty, then initialize the calendar popup
+    if radars is not empty, get level II for that radar
+     */
+    if (radars.size === 0) {
+        // radarId
+        // Initialize calendar popup to get: frameTime (same format as the return from getCurrentFrameTime)
+        // url = findNearestLevel2File(radarId, frameTime)
+        // decode-requested with url
+    } else {
+        console.log(getCurrentFrameTime());
+        // radarId
+        // mrmsFrame or timestamp
+        // url
+        // decode-requested with url
+    }
+
     if (radars.has(radarId)) {
         setActiveRadar(radarId);
     }
-});
+}
+
+document.removeEventListener('radar-marker-clicked', onRadarMarkerClicked);
+document.addEventListener('radar-marker-clicked', onRadarMarkerClicked);
 
 // Clear overlay
 document.addEventListener('clear-overlay', () => {
