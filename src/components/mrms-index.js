@@ -1,6 +1,7 @@
 import { Calendar, colorMap } from "./calendar.js";
 import { aggregateByDay, loadRadarData, getHourlyDataForDay, getTimezoneOffset } from "../mrmsArchiveDataLoader.js";
 import { barChart } from "./barChart.js";
+import {DragContainer, draggerClassList} from "./draggable.js";
 
 const VARIABLE_LABELS = {
     'volume_rain': 'Volume (L)',
@@ -9,6 +10,7 @@ const VARIABLE_LABELS = {
 };
 
 const popup = document.getElementsByClassName("mrms-index-popup")[0];
+popup.drag = new DragContainer(popup, draggerClassList);
 const calendarEl = document.getElementById('calendar');
 const barChartEl = document.getElementById('chart');
 
