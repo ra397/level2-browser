@@ -1,6 +1,6 @@
 // MRMS API - fetches and decodes MRMS files
 
-import {extractTimestampFromKey} from "../main.js";
+import {extractTimestampFromKey} from "../utils/util.js";
 
 const state = {
     product: null,
