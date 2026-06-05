@@ -8,7 +8,7 @@ const legendLabels = legendContainer.querySelector('.legend-labels');
 // Store current legend data for each mode
 let level2LegendData = null;
 let mrmsLegendData = null;
-let currentMode = 'mrms';
+let currentMode = 'level2';
 
 function formatValue(value) {
     if (Number.isInteger(value)) {

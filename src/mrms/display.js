@@ -219,18 +219,18 @@ document.addEventListener('player-seek', event => {
 });
 
 // Export current frame info for Level II lookup
-export function getCurrentFrameTime() {
-    const activeFiles = getActiveFiles();
-    if (activeFiles.length === 0 || currentIndex >= activeFiles.length) {
-        return null;
-    }
-
-    const fileName = activeFiles[currentIndex];
-    try {
-        return extractTimestampFromKey(fileName);
-    } catch (e) {
-        return null;
-    }
-}
+// export function getCurrentFrameTime() {
+//     const activeFiles = getActiveFiles();
+//     if (activeFiles.length === 0 || currentIndex >= activeFiles.length) {
+//         return null;
+//     }
+//
+//     const fileName = activeFiles[currentIndex];
+//     try {
+//         return extractTimestampFromKey(fileName);
+//     } catch (e) {
+//         return null;
+//     }
+// }
 
 export { displayFrame };

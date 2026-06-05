@@ -1,4 +1,4 @@
-import {getCurrentFrameTime} from "../mrms/display.js";
+import {getCurrentFrameTime} from "./barChart.js";
 import './loading-screen.js';
 
 // const decodeBtn = document.getElementById('decodeBtn');
@@ -168,6 +168,8 @@ momentList.addEventListener('change', (e) => {
 
 // Listen: decode-success
 document.addEventListener('decode-success', async (e) => {
+    popup.classList.add('hidden');
+    
     const { radarId, sweeps, moments, currentMoment, url } = e.detail;
 
     // Track this radar as loaded
@@ -175,7 +177,7 @@ document.addEventListener('decode-success', async (e) => {
 
     // Reset button but keep it disabled since this radar now has an overlay
     viewLevel2Btn.textContent = 'View Level II';
-    viewLevel2Btn.disabled = true;
+    
 
     level2Instructions.style.display = 'none';
     level2RadarSelection.style.display = 'block';
@@ -244,6 +246,11 @@ opacitySlider.addEventListener('input', (e) => {
 // Clear overlay button
 clearOverlayBtn.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('clear-overlay'));
+});
+
+const clearAllBtn = document.getElementById('clearAllBtn');
+clearAllBtn.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('clear-all-overlays'));
 });
 
 // --- MRMS Mode / Radar Selection ---
@@ -365,13 +372,13 @@ document.addEventListener('radar-focused', async (e) => {
     overlayControls.style.display = '';
 
     // Disable View Level II button since this radar has an overlay
-    viewLevel2Btn.disabled = true;
+    
 });
 
 // Update overlay-cleared to handle partial clear
 document.addEventListener('overlay-cleared', () => {
     // Only reset URL input, don't hide controls if there are still radars
-    urlInput.value = '';
+    // urlInput.value = '';
 });
 
 // Listen for when no radars remain
@@ -386,6 +393,7 @@ document.addEventListener('radar-removed', (e) => {
 });
 
 // View Level II button - fetch nearest file to current MRMS frame
+const popup = document.getElementsByClassName("mrms-index-popup")[0];
 viewLevel2Btn.addEventListener('click', async () => {
     if (!selectedRadar) {
         alert('Please select a radar station on the map first');
@@ -399,7 +407,6 @@ viewLevel2Btn.addEventListener('click', async () => {
         return;
     }
 
-    viewLevel2Btn.disabled = true;
     viewLevel2Btn.textContent = 'Finding nearest file...';
 
     try {

@@ -57,3 +57,9 @@ document.addEventListener('clear-overlay', () => {
         nexradMarkers.clearSelection();
     }
 });
+
+document.addEventListener('clear-all-overlays', () => {
+    if (nexradMarkers) {
+        nexradMarkers.clearSelection();
+    }
+});

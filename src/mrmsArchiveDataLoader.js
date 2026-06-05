@@ -48,7 +48,7 @@ export function getTimezoneOffset(useLocal) {
     if (!useLocal) return 0;
     // JavaScript getTimezoneOffset returns minutes, positive for west of UTC
     // We need seconds to subtract from UTC to align with local midnight
-    return new Date().getTimezoneOffset() * 60;
+    return -new Date().getTimezoneOffset() * 60;
 }
 
 export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area }, aggregationMethod = 'mean', tzOffset = 0) {
@@ -136,7 +136,8 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
 
         hourlyData.push({
             label: formattedTime,
-            value: value
+            value: value,
+            timestamp: new Date((hourStart - tzOffset + 3600) * 1000)
         });
     }
 

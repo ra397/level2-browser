@@ -1,0 +1,86 @@
+@import 'calendar.css';
+@import 'barChart.css';
+
+.mrms-index-popup {
+    font-size: 14px;
+
+    width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+
+    padding: 1em;
+
+    outline: 1px solid black;
+
+    position: absolute;
+    top: calc(50% - 350px);
+    left: calc(50% - 350px);
+    background: white;
+}
+
+.dropdown-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    width: 12ch;
+    padding: 2px 24px 2px 1ch;
+
+    font-size: 1em;
+    color: #333333;
+    background-color: #ffffff;
+
+    outline: 1px solid #cccccc;
+    border-radius: 0.5em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666666' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+}
+
+.title {
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    cursor: pointer;
+    user-select: none;
+    background-color: #e6e6e67d;
+    aspect-ratio: 1 / 1;
+    height: 1.6em;
+    line-height: 1.6em;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.close-btn:hover {
+    background-color: #DE5246;
+    color: white;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#back {
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 0.5em;
+}

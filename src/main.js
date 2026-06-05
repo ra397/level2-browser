@@ -13,6 +13,8 @@ import './layers/terrain.js';
 import './layers/usgs.js';
 import './layers/river.js';
 import './components/collapsable.js';
+import './components/mrms-index.js';
+import './components/mrms-index.css';
 
 // MRMS modules
 import './mrms/api.js';
@@ -28,8 +30,8 @@ import {tooltipManager} from "./components/tooltip.js";
 import {Profile} from "./components/profile.js";
 import './components/graph.js';
 // import {getCurrentMode} from "./components/mode-toggle.js";
-import {extractLevel2Timestamp} from "./components/menu.js";
-import {getCurrentFrameTime} from "./mrms/display.js";
+import {extractLevel2Timestamp, findNearestLevel2File} from "./components/menu.js";
+import {getCurrentFrameTime} from "./components/barChart.js";
 import {setCloseTimeoutDisabled} from "./components/sidebar.js";
 
 const PRODUCT_CONFIG = {
@@ -339,8 +341,6 @@ document.addEventListener('moment-changed', (e) => {
 
 // Map click handler for tooltips
 map.addListener('click', (e) => {
-    if (getCurrentMode() !== 'level2') return;
-
     const clickLat = e.latLng.lat();
     const clickLng = e.latLng.lng();
 
@@ -398,8 +398,8 @@ document.addEventListener('opacity-changed', (e) => {
     }
 });
 
-function onRadarMarkerClicked(e) {
-    const { radarId } = e.detail;
+document.addEventListener('radar-marker-clicked', async (e) => {
+    const {radarId} = e.detail;
 
     /*
     TODO:
@@ -407,25 +407,22 @@ function onRadarMarkerClicked(e) {
     if radars is not empty, get level II for that radar
      */
     if (radars.size === 0) {
+        document.dispatchEvent(new CustomEvent('init:archive', {
+            detail: {radarId}
+        }));
         // radarId
         // Initialize calendar popup to get: frameTime (same format as the return from getCurrentFrameTime)
         // url = findNearestLevel2File(radarId, frameTime)
         // decode-requested with url
     } else {
-        console.log(getCurrentFrameTime());
-        // radarId
-        // mrmsFrame or timestamp
-        // url
-        // decode-requested with url
+        if (radars.has(radarId)) {
+            setActiveRadar(radarId);
+        } else {
+            const url = await findNearestLevel2File(radarId, getCurrentFrameTime());
+            document.dispatchEvent(new CustomEvent('decode-requested', {detail: {url}}));
+        }
     }
-
-    if (radars.has(radarId)) {
-        setActiveRadar(radarId);
-    }
-}
-
-document.removeEventListener('radar-marker-clicked', onRadarMarkerClicked);
-document.addEventListener('radar-marker-clicked', onRadarMarkerClicked);
+});
 
 // Clear overlay
 document.addEventListener('clear-overlay', () => {
@@ -469,6 +466,33 @@ document.addEventListener('clear-overlay', () => {
     document.dispatchEvent(new CustomEvent('overlay-cleared'));
 });
 
+document.addEventListener('clear-all-overlays', () => {
+    // Clean up all radars
+    for (const [radarId, radar] of radars) {
+        if (radar.overlay) {
+            radar.overlay.setMap(null);
+        }
+        if (radar.profile) {
+            radar.profile.destroy();
+        }
+        document.dispatchEvent(new CustomEvent('radar-removed', {
+            detail: { radarId }
+        }));
+    }
+
+    radars.clear();
+    activeRadarId = null;
+    clearLevel2Legend();
+    tooltipManager.clearAll();
+    setCloseTimeoutDisabled(false);
+
+    document.dispatchEvent(new CustomEvent('radar-focused', {
+        detail: {
+            radarId: null,
+            radar: null
+        }
+    }));
+});
 
 // Mode switching - show/hide Level II overlay
 document.addEventListener('mode-changed', (e) => {
@@ -1063,33 +1087,6 @@ document.addEventListener('profile-mode-changed', (e) => {
         activeRadar.profile.setMode(mode);
     }
 });
-
-export function extractTimestampFromKey(filename) {
-    const match = filename.match(/(\d{8})-(\d{6})\.grib2\.gz$/);
-
-    if (!match) {
-        throw new Error("No valid timestamp found in the input string.");
-    }
-
-    const [_, yyyymmdd, hhmmss] = match;
-
-    const year = yyyymmdd.substring(0, 4);
-    const month = yyyymmdd.substring(4, 6);
-    const day = yyyymmdd.substring(6, 8);
-
-    const hour = hhmmss.substring(0, 2);
-    const minute = hhmmss.substring(2, 4);
-    const second = hhmmss.substring(4, 6);
-
-    return new Date(Date.UTC(
-        parseInt(year),
-        parseInt(month) - 1,
-        parseInt(day),
-        parseInt(hour),
-        parseInt(minute),
-        parseInt(second)
-    ));
-}
 
 function generateShareableUrl() {
     const urls = [];

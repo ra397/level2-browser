@@ -4,6 +4,10 @@
     --blue: #007AFF;
 }
 
+.hidden {
+    display: none !important;
+}
+
 /* Mode Toggle */
 #mode-toggle {
     position: fixed;

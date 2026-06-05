@@ -19,6 +19,7 @@
         <span class="sidebar-item" data-menu="level2-menu">Level II</span>
         <span class="sidebar-item" data-menu="map-layers">Layers</span>
         <span class="sidebar-item" id="exportBtn">Export</span>
+        <span class="sidebar-item" id="clearAllBtn">Clear</span>
         <span class="sidebar-item" data-menu="settings-menu">Settings</span>
     </div>
 
@@ -36,34 +37,34 @@
 <!--        </div>-->
 <!--    </div>-->
 
-    <div id="mrms-menu" class="hidden">
-        <div class="menu-header">
-            <h2>MRMS Reflectivity</h2>
-        </div>
-        <div id="product-menu-container" class="layers-list">
-            <label class="product-radio-item">
-                <input type="radio" name="product_selection" value="MergedBaseReflectivity_00.50">
-                <span>Base Reflectivity</span>
-            </label>
-            <label class="product-radio-item">
-                <input type="radio" name="product_selection" value="MergedBaseReflectivityQC_00.50">
-                <span>Base Reflectivity (Quality Control)</span>
-            </label>
-        </div>
-        <div id="mrmsOverlayControls" class="section-container" style="display: none;">
-            <div class="section-header">
-                <span>Overlay</span>
-            </div>
-            <div class="overlay-controls-row">
-                <label class="opacity-label">
-                    Opacity
-                    <input type="range" id="mrmsOpacitySlider" min="0" max="1" step="0.05" value="1">
-                    <span id="mrmsOpacityValue">100%</span>
-                </label>
-                <button class="clear-btn" id="clearMrmsBtn">Clear</button>
-            </div>
-        </div>
-    </div>
+<!--    <div id="mrms-menu" class="hidden">-->
+<!--        <div class="menu-header">-->
+<!--            <h2>MRMS Reflectivity</h2>-->
+<!--        </div>-->
+<!--        <div id="product-menu-container" class="layers-list">-->
+<!--            <label class="product-radio-item">-->
+<!--                <input type="radio" name="product_selection" value="MergedBaseReflectivity_00.50">-->
+<!--                <span>Base Reflectivity</span>-->
+<!--            </label>-->
+<!--            <label class="product-radio-item">-->
+<!--                <input type="radio" name="product_selection" value="MergedBaseReflectivityQC_00.50">-->
+<!--                <span>Base Reflectivity (Quality Control)</span>-->
+<!--            </label>-->
+<!--        </div>-->
+<!--        <div id="mrmsOverlayControls" class="section-container" style="display: none;">-->
+<!--            <div class="section-header">-->
+<!--                <span>Overlay</span>-->
+<!--            </div>-->
+<!--            <div class="overlay-controls-row">-->
+<!--                <label class="opacity-label">-->
+<!--                    Opacity-->
+<!--                    <input type="range" id="mrmsOpacitySlider" min="0" max="1" step="0.05" value="1">-->
+<!--                    <span id="mrmsOpacityValue">100%</span>-->
+<!--                </label>-->
+<!--                <button class="clear-btn" id="clearMrmsBtn">Clear</button>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
 
     <div id="level2-menu" class="hidden">
 <!--        <div id="level2-instructions">-->
@@ -79,12 +80,16 @@
 <!--            </div>-->
 <!--        </div>-->
 
+        <div id="level2-instructions">
+            Click on a radar.
+        </div>
+
         <div id="level2-radar-selection" style="display: none;">
             <div class="selected-radar-info">
                 <span class="selected-radar-label">Selected Radar:</span>
                 <span id="selectedRadarId" class="selected-radar-id">--</span>
             </div>
-            <button class="submit-btn" id="viewLevel2Btn">View Level II</button>
+<!--            <button class="submit-btn" id="viewLevel2Btn">View Level II</button>-->
         </div>
 
         <div id="sweepContainer" class="section-container" style="display: none;">
@@ -300,6 +305,41 @@
             <div class="x-axis-labels" id="xLabels"></div>
             <div class="x-axis-title">Ground Range (km)</div>
         </div>
+    </div>
+
+    <div class="mrms-index-popup hidden">
+        <span class="title">MRMS Archive</span>
+
+        <span id="back" class="hidden">← Back</span>
+        <span class="close-btn">&#10006;</span>
+
+        <div class="dropdown-container">
+            <label for="variable-selection">Statistic:
+                <select id="variable-selection" name="variable-selection">
+                    <option value="mean_rain" selected>Mean</option>
+                    <option value="area_rain">Area</option>
+                    <option value="volume_rain">Volume</option>
+                </select>
+            </label>
+
+            <label for="aggregation-method-selection">Aggregation method:
+                <select id="aggregation-method-selection" name="aggregation-method-selection">
+                    <option value="mean" selected>Mean</option>
+                    <option value="max">Max</option>
+                </select>
+            </label>
+        </div>
+
+        <div id="calendar">
+            <div id="nav-btns">
+                <button class="nav" id="prev" aria-label="Previous year">&lsaquo;</button>
+                <button class="nav" id="next" aria-label="Next year">&rsaquo;</button>
+            </div>
+            <div class="months" id="months"></div>
+        </div>
+
+        <div id="chart"></div>
+        <button id="viewLevel2Btn" class="submit-btn hidden">View Level II</button>
     </div>
 
 <!--    <div id="player-container">-->
