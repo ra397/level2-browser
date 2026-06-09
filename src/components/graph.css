@@ -1,10 +1,10 @@
 .graph-wrapper {
     width: 100%;
-    max-width: 900px;
+    max-width: 700px;
 
     position: absolute;
-    left: 10ch;
-    bottom: 1ch;
+    left: 22.5ch;
+    top: 1.5ch;
     background-color: white;
     padding: 0 2ch 0 0;
     border-radius: 4px;
@@ -17,11 +17,11 @@
 }
 
 .y-axis-labels {
-    width: 60px;
+    width: 30px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 0 8px 0 0;
+    padding: 0 4px 0 0;
     flex-shrink: 0;
 }
 
@@ -38,7 +38,7 @@
     text-align: center;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
-    margin-right: 6px;
+    margin-right: 2px;
     letter-spacing: 1px;
     text-transform: uppercase;
 }
@@ -62,7 +62,7 @@
 .x-axis-labels {
     display: flex;
     justify-content: space-between;
-    padding: 6px 0 0 60px;
+    padding: 6px 0 0 32px;
 }
 
 .x-axis-labels .label {
@@ -76,7 +76,7 @@
     font-size: 11px;
     color: #5a6a8a;
     margin-top: 4px;
-    padding-left: 60px;
+    padding-left: 32px;
     letter-spacing: 1px;
     text-transform: uppercase;
 }
@@ -86,7 +86,7 @@
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 12px;
-    padding-left: 60px;
+    padding-left: 32px;
 }
 
 .title-bar h2 {

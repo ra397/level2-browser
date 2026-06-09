@@ -1,4 +1,5 @@
 import './graph.css';
+import { DragContainer, draggerClassList } from './draggable.js';
 
 // ─── Constants ───
 const EARTH_RADIUS = 6_371_000;
@@ -73,7 +74,7 @@ function setFolded(folded) {
         wrapper.style.width = 'fit-content'
     } else {
         wrapper.style.height = 'fit-content';
-        wrapper.style.width = '900px';
+        wrapper.style.width = '700px';
         content.style.display = '';
         foldBtn.textContent = '−';
 
@@ -1329,3 +1330,14 @@ createModeSwitcher();
 initFoldButton();
 renderAxes();
 window.addEventListener('resize', render);
+
+const graphWrapper = document.querySelector('.graph-wrapper');
+if (graphWrapper) {
+    // Convert bottom positioning to top positioning for drag compatibility
+    const rect = graphWrapper.getBoundingClientRect();
+    graphWrapper.style.top = rect.top + 'px';
+    graphWrapper.style.bottom = 'auto';
+    graphWrapper.style.left = rect.left + 'px';
+
+    graphWrapper.drag = new DragContainer(graphWrapper, draggerClassList);
+}
