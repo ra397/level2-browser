@@ -120,8 +120,24 @@ export class Calendar {
                 el.dataset.val = dataVal.toString();
                 const colorMap = this.colorMap[this.variable];
                 el.style.background = this.#getColor(dataVal, colorMap);
+
+
+                // Add to element title
+                let formattedVal;
+                if (this.variable === "volume_rain") {
+                    // Convert liters to km³ (1 km³ = 1e12 liters)
+                    formattedVal = (dataVal / 1e12).toFixed(2) + " km³";
+                } else if (this.variable === "area_rain") {
+                    formattedVal = (dataVal * 100).toFixed(2) + "%"; // if stored as decimal 0-1
+                } else if (this.variable === "mean_rain") {
+                    formattedVal = dataVal.toFixed(2) + " mm";
+                } else {
+                    formattedVal = dataVal.toFixed(2);
+                }
+                el.title = formattedVal;
             } else {
                 el.dataset.val = '-1';
+                el.title = "No data";
             }
 
             el.textContent = d;
