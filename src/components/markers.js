@@ -19,7 +19,7 @@ mapReady.then(() => {
         }
 
         nexradMarkers.setColor("red");
-        nexradMarkers.setSize(3.5);
+        nexradMarkers.setSize(4.0);
 
         // Handle marker clicks - select radar station
         nexradMarkers.onClick((markerObj) => {

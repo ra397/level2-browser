@@ -49,7 +49,8 @@ export class MarkerCollection {
         const svg = `
             <svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}">
               <circle cx="${this.size}" cy="${this.size}"
-                      r="${this.size - 1}" fill="${this.selectedColor}" />
+                      r="${this.size - 1}" fill="${this.selectedColor}"
+                       stroke="#000"/>
             </svg>
           `;
 

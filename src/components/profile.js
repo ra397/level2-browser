@@ -323,7 +323,7 @@ export class Profile {
             fillOpacity: 1,
             strokeColor: color,
             strokeWeight: 0,
-            scale: 1.5,
+            scale: 2.5,
         };
     }
 
