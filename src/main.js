@@ -347,6 +347,13 @@ map.addListener('click', (e) => {
     // Check active radar first (it's on top)
     const activeRadar = getActiveRadar();
     if (activeRadar && activeRadar.radarData && activeRadar.station) {
+        // Check if in circle
+        const distance = google.maps.geometry.spherical.computeDistanceBetween(
+            { lat: activeRadar.station.lat, lng: activeRadar.station.lng },
+            { lat: clickLat, lng: clickLng }
+        );
+        if (distance > 230_000) return; // 230 km in meters
+
         const indices = latLngToRadarIndex(
             clickLat, clickLng,
             activeRadar.station.lat, activeRadar.station.lng,
