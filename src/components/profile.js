@@ -1,6 +1,6 @@
 export class Profile {
     #mode = 'AHI'; // 'AHI', 'RHI', or 'AXS'
-    #rangeKm = 50; // For RHI mode
+    #rangeKm = 230; // For RHI mode
     #sliceWidth = 15; // degrees
     #axsPointA = null; // For AXS mode
     #axsPointB = null; // For AXS mode

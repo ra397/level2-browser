@@ -28,16 +28,20 @@ function getCurrentTzOffset() {
     return getTimezoneOffset(useLocalTime);
 }
 
+const title = document.querySelector('.mrms-index-popup > .title')
+
 function showBarChart() {
     calendarEl.classList.add('hidden');
     barChartEl.classList.remove('hidden');
     backBtn.classList.remove('hidden');
+    title.textContent = "Choose an hour:";
 }
 
 function showCalendar() {
     barChartEl.classList.add('hidden');
     calendarEl.classList.remove('hidden');
     backBtn.classList.add('hidden');
+    title.textContent = "Choose a day:";
 }
 
 function updateBarChart() {
