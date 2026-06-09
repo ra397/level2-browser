@@ -15,7 +15,7 @@ const calendarEl = document.getElementById('calendar');
 const barChartEl = document.getElementById('chart');
 
 const variableSelectionEl = document.getElementById("variable-selection");
-const aggregationMethodSelectionEl = document.getElementById("aggregation-method-selection");
+// const aggregationMethodSelectionEl = document.getElementById("aggregation-method-selection");
 const backBtn = document.getElementById('back');
 
 let currentRadar = null;
@@ -73,12 +73,13 @@ async function initArchive(e) {
         new Date(),                                    // endDate
         currentYear,
         calendarEl,
-        aggregateByDay(radarData, aggregationMethodSelectionEl.value, getCurrentTzOffset()),
+        aggregateByDay(radarData, 'mean', getCurrentTzOffset()),
         variableSelectionEl.value,
         colorMap,
         handleDayClick,
         getCurrentTzOffset()
     );
+    updateBarChart();
     popup.classList.remove('hidden');
 }
 
@@ -104,7 +105,7 @@ async function handleYearChange(direction) {
 
         // Only updates state if fetch succeeds
         currentYear = targetYear;
-        calendar.updateData(aggregateByDay(radarData, aggregationMethodSelectionEl.value, getCurrentTzOffset()));
+        calendar.updateData(aggregateByDay(radarData, 'mean', getCurrentTzOffset()));
         calendar.setYear(currentYear);
 
     } catch (error) {
@@ -126,11 +127,11 @@ variableSelectionEl.addEventListener('change',  () => {
     updateBarChart();
 });
 
-aggregationMethodSelectionEl.addEventListener('change',() => {
-    const newAggregationMethod = aggregationMethodSelectionEl.value;
-    const newData = aggregateByDay(radarData, newAggregationMethod, getCurrentTzOffset());
-    calendar.updateData(newData);
-});
+// aggregationMethodSelectionEl.addEventListener('change',() => {
+//     const newAggregationMethod = aggregationMethodSelectionEl.value;
+//     const newData = aggregateByDay(radarData, newAggregationMethod, getCurrentTzOffset());
+//     calendar.updateData(newData);
+// });
 
 document.addEventListener('timezone-change', (e) => {
     useLocalTime = e.detail.timezone === 'local';
@@ -145,7 +146,7 @@ document.addEventListener('timezone-change', (e) => {
     }
 
     // Re-aggregate data with new timezone
-    const newData = aggregateByDay(radarData, aggregationMethodSelectionEl.value, tzOffset);
+    const newData = aggregateByDay(radarData, 'mean', tzOffset);
     calendar.setTimezoneOffset(tzOffset);
     calendar.updateData(newData);
     updateBarChart();
