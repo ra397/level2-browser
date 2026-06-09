@@ -17,11 +17,10 @@ const formatValue = (value, variable) => {
     return value.toFixed(2);
 };
 
-export function barChart(el, { data, yLabel = "", onSelect, labelEvery = 3, variable }) {
+export function barChart(el, { data, onSelect, labelEvery = 3, variable }) {
     const max = Math.max(...data.map(d => d.value)) || 1;
     el.classList.add("bar-chart");
     el.innerHTML = `
-      <div class="y-label">${yLabel}</div>
       <div>
         <div class="bars">${data.map(d =>
         `<div class="bar" data-timestamp="${d.timestamp.getTime()}" title="${formatValue(d.value, variable)}" style="height:calc(5px + ${d.value / max * 100}%)"></div>`).join("")}</div>

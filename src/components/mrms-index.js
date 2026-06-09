@@ -53,7 +53,6 @@ function updateBarChart() {
 
     barChart(barChartEl, {
         data: hourlyData,
-        yLabel: VARIABLE_LABELS[variable] || variable,
         variable: variable,
     });
 }
