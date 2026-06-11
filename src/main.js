@@ -100,10 +100,12 @@ function setActiveRadar(radarId) {
     }
 
     // Dispatch event for menu to update
+
     document.dispatchEvent(new CustomEvent('radar-focused', {
         detail: {
             radarId,
-            radar: activeRadar
+            radar: activeRadar,
+            visible: activeRadar.overlay ? activeRadar.overlay.getMap() !== null : true,
         }
     }));
 
@@ -429,6 +431,20 @@ document.addEventListener('radar-marker-clicked', async (e) => {
             document.dispatchEvent(new CustomEvent('decode-requested', {detail: {url}}));
         }
     }
+});
+
+// Toggle overlay
+const toggleLayerBtn = document.getElementById('toggleLayerBtn');
+document.addEventListener('toggle-layer', () => {
+    const activeRadar = getActiveRadar();
+    if (!activeRadar?.overlay) return;
+
+    const currentlyVisible = activeRadar.overlay.getMap() !== null;
+    activeRadar.overlay.setMap(currentlyVisible ? null : map);
+
+    // Update the button text
+    toggleLayerBtn.textContent = currentlyVisible ? 'Show Layer' : 'Hide Layer';
+    console.log(`Setting to ${currentlyVisible} Layer`)
 });
 
 // Clear overlay

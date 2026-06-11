@@ -9,6 +9,7 @@ const momentList = document.getElementById('momentList');
 const overlayControls = document.getElementById('overlayControls');
 const opacitySlider = document.getElementById('opacitySlider');
 const opacityValue = document.getElementById('opacityValue');
+const toggleLayerBtn = document.getElementById('toggleLayerBtn');
 const clearOverlayBtn = document.getElementById('clearOverlayBtn');
 
 // New Level II workflow elements
@@ -168,6 +169,11 @@ momentList.addEventListener('change', (e) => {
 
 // Listen: decode-success
 document.addEventListener('decode-success', async (e) => {
+    layerVisible = true;
+    toggleLayerBtn.textContent = 'Hide Layer';
+
+    console.log("Setting to Hide Layer")
+
     popup.classList.add('hidden');
     
     const { radarId, sweeps, moments, currentMoment, url } = e.detail;
@@ -243,6 +249,15 @@ opacitySlider.addEventListener('input', (e) => {
     document.dispatchEvent(new CustomEvent('opacity-changed', { detail: { opacity } }));
 });
 
+// Toggle overlay button
+let layerVisible = true;
+toggleLayerBtn.addEventListener('click', () => {
+    // layerVisible = !layerVisible;
+    // toggleLayerBtn.textContent = layerVisible ? 'Hide Layer' : 'Show Layer';
+    // document.dispatchEvent(new CustomEvent('toggle-layer', { detail: { visible: layerVisible } }));
+    document.dispatchEvent(new CustomEvent('toggle-layer'));
+});
+
 // Clear overlay button
 clearOverlayBtn.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('clear-overlay'));
@@ -303,7 +318,7 @@ document.addEventListener('radar-selected', (e) => {
 });
 
 document.addEventListener('radar-focused', async (e) => {
-    const { radarId, radar } = e.detail;
+    const { radarId, radar, visible } = e.detail;
 
     if (!radar) {
         // No active radar - reset the entire Level II menu
@@ -340,6 +355,8 @@ document.addEventListener('radar-focused', async (e) => {
             level2RadarSelection.style.display = 'none';
         }
 
+        toggleLayerBtn.textContent = 'Hide Layer';
+        console.log("Setting to Hide Layer")
         return;
     }
 
@@ -374,7 +391,8 @@ document.addEventListener('radar-focused', async (e) => {
     overlayControls.style.display = '';
 
     // Disable View Level II button since this radar has an overlay
-    
+    toggleLayerBtn.textContent = visible ? 'Hide Layer' : 'Show Layer';
+    console.log(`Setting to ${visible} Layer`)
 });
 
 // Update overlay-cleared to handle partial clear

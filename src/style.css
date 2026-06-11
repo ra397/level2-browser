@@ -267,6 +267,20 @@ body {
     transition: opacity 0.2s;
 }
 
+.toggle-btn {
+    all: unset;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
 .clear-btn:hover {
     opacity: 0.9;
 }
@@ -795,4 +809,9 @@ body {
     cursor: pointer;
     border: none;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.wide {
+    margin-top: 2ch;
+    width: 100%;
 }
