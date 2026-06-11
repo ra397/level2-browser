@@ -1,14 +1,14 @@
 const viewLevel2Btn = document.getElementById("viewLevel2Btn");
 
 const unitMap = {
-    "volume_rain": "L",
     "area_rain": "%",
-    "mean_rain": "mm"
+    "mean_rain": "mm",
+    "max_rain": "mm",
 };
 
 const formatValue = (value, variable) => {
-    if (variable === "volume_rain") {
-        return (value / 1e12).toFixed(2) + " km³";
+    if (variable === "max_rain") {
+        return value.toFixed(2) + " mm";
     } else if (variable === "area_rain") {
         return (value * 100).toFixed(2) + "%";
     } else if (variable === "mean_rain") {

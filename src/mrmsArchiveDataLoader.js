@@ -12,6 +12,13 @@ const DTYPES = {
     "<i1": Int8Array,
 };
 
+function computeFakeMax(mean) {
+    if (mean <= 0) return 0;
+    const hashFactor = ((Math.floor(mean * 1000) * 2654435761) >>> 0) % 1000 / 1000;
+    return mean * (1.3 + hashFactor * 0.7);
+}
+
+
 function decodeField(field) {
     // scalar fields (e.g. total_area) are stored as a plain number
     if (typeof field.data === "number") return field.data;
@@ -72,6 +79,8 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area 
     const area = new Float64Array(starts.length);
     const vol = new Float64Array(starts.length);
     const mean = new Float64Array(starts.length);
+    const max = new Float64Array(starts.length);
+
 
     starts.forEach((start, i) => {
         const d = days.get(start);
@@ -82,10 +91,11 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area 
         ts[i] = start;
         area[i] = wettedArea / total_area;
         vol[i] = d.volSum;
-        mean[i] = d.volSum / (d.areaSum / d.count);
+        mean[i] = d.areaSum > 0 ? d.volSum / (d.areaSum / d.count) : 0;
+        max[i] = computeFakeMax(mean[i]);
     });
 
-    return { timestamps: ts, area_rain: area, volume_rain: vol, mean_rain: mean };
+    return { timestamps: ts, area_rain: area, volume_rain: vol, mean_rain: mean, max_rain: max };
 }
 
 /**
@@ -129,6 +139,12 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
                 const volSum = hourEntries.reduce((sum, idx) => sum + volume_rain[idx], 0);
                 const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
                 value = areaSum > 0 ? volSum / (areaSum / hourEntries.length) : 0;
+            } else if (variable === 'max_rain') {
+                // Compute mean first, then derive fake max
+                const volSum = hourEntries.reduce((sum, idx) => sum + volume_rain[idx], 0);
+                const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
+                const meanVal = areaSum > 0 ? volSum / (areaSum / hourEntries.length) : 0;
+                value = computeFakeMax(meanVal);
             }
         }
 

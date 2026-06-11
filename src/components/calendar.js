@@ -1,10 +1,4 @@
 export const colorMap = {
-    "volume_rain": [ // Liters
-        { max: 600_000_000_000,   color: "" },
-        { max: 1_500_000_000_000,   color: "#ffffbf" },
-        { max: 3_000_000_000_000, color: "#fdae61" },
-        { max: Infinity,          color: "#d7191c" }
-    ],
     "area_rain": [ // %
         { max: 0.1,   color: "" },
         { max: 0.25,   color: "#ffffbf" },
@@ -16,7 +10,13 @@ export const colorMap = {
         { max: 75,   color: "#ffffbf" },
         { max: 150,   color: "#fdae61" },
         { max: Infinity,   color: "#d7191c" }
-    ]
+    ],
+    "max_rain": [ // mm (fake max)
+        { max: 75,   color: "" },
+        { max: 150,   color: "#ffffbf" },
+        { max: 250,  color: "#fdae61" },
+        { max: Infinity, color: "#d7191c" }
+    ],
 };
 
 
@@ -124,9 +124,8 @@ export class Calendar {
 
                 // Add to element title
                 let formattedVal;
-                if (this.variable === "volume_rain") {
-                    // Convert liters to km³ (1 km³ = 1e12 liters)
-                    formattedVal = (dataVal / 1e12).toFixed(2) + " km³";
+                if (this.variable === "max_rain") {
+                    formattedVal = dataVal.toFixed(2) + " mm";
                 } else if (this.variable === "area_rain") {
                     formattedVal = (dataVal * 100).toFixed(2) + "%"; // if stored as decimal 0-1
                 } else if (this.variable === "mean_rain") {

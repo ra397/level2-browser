@@ -4,7 +4,7 @@ import { barChart } from "./barChart.js";
 import {DragContainer, draggerClassList} from "./draggable.js";
 
 const VARIABLE_LABELS = {
-    'volume_rain': 'Volume (L)',
+    'max_rain': 'Max Depth (mm)',
     'area_rain': 'Area (%)',
     'mean_rain': 'Mean Depth (mm)'
 };
