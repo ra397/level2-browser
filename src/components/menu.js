@@ -298,6 +298,8 @@ document.addEventListener('radar-selected', (e) => {
         dpadLeft.disabled = true;
         dpadRight.disabled = true;
     }
+
+    level2Instructions.innerHTML = `Selected radar: <b>${selectedRadar.id}</b>`;
 });
 
 document.addEventListener('radar-focused', async (e) => {
