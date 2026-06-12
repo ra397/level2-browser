@@ -127,6 +127,11 @@ function updateAXSConfirmButton() {
     }
 }
 
+document.addEventListener("clear-all-overlays", function () {
+    setFolded(true);
+    setHasData(false);
+});
+
 document.addEventListener('profile-axs-line-updated', (e) => {
     if (currentMode !== 'AXS') return;
 
