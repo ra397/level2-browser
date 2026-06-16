@@ -815,3 +815,32 @@ body {
     margin-top: 2ch;
     width: 100%;
 }
+
+.close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    cursor: pointer;
+    user-select: none;
+    background-color: #e6e6e67d;
+    aspect-ratio: 1 / 1;
+    height: 1.6em;
+    line-height: 1.6em;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.close-btn:hover {
+    background-color: #DE5246;
+    color: white;
+}
+
+.mrms-index-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.mrms-index-buttons .submit-btn {
+    flex: 1;
+}

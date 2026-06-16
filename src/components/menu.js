@@ -423,7 +423,7 @@ viewLevel2Btn.addEventListener('click', async () => {
     const frameTime = getCurrentFrameTime();
 
     if (!frameTime) {
-        alert('No MRMS frame is currently displayed');
+        alert('Please select an hour.');
         return;
     }
 
@@ -450,7 +450,7 @@ viewLevel2Btn.addEventListener('click', async () => {
 });
 
 
-async function fetchFilesForDate(radarId, date) {
+export async function fetchFilesForDate(radarId, date) {
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
@@ -676,3 +676,12 @@ export function extractLevel2Timestamp(filename) {
         parseInt(second)
     ));
 }
+
+document.querySelectorAll('.close-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const menu = e.target.closest('#level2-menu, #map-layers, #settings-menu');
+        if (menu) {
+            menu.classList.add('hidden');
+        }
+    });
+});

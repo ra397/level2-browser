@@ -2,6 +2,7 @@ import { Calendar, colorMap } from "./calendar.js";
 import { aggregateByDay, loadRadarData, getHourlyDataForDay, getTimezoneOffset } from "../mrmsArchiveDataLoader.js";
 import { barChart } from "./barChart.js";
 import {DragContainer, draggerClassList} from "./draggable.js";
+import {fetchFilesForDate} from "./menu.js";
 
 const VARIABLE_LABELS = {
     'max_rain': 'Max Depth (mm)',
@@ -17,6 +18,9 @@ const barChartEl = document.getElementById('chart');
 const variableSelectionEl = document.getElementById("variable-selection");
 // const aggregationMethodSelectionEl = document.getElementById("aggregation-method-selection");
 const backBtn = document.getElementById('back');
+
+const getMostRecentBtn = document.getElementById('getMostRecentBtn');
+const viewLevel2Btn = document.getElementById('viewLevel2Btn');
 
 let currentRadar = null;
 let currentYear = 2026;
@@ -34,6 +38,8 @@ function showBarChart() {
     calendarEl.classList.add('hidden');
     barChartEl.classList.remove('hidden');
     backBtn.classList.remove('hidden');
+    getMostRecentBtn.classList.add('hidden');
+    viewLevel2Btn.classList.remove('hidden');
     title.textContent = "Choose an hour:";
 }
 
@@ -41,6 +47,8 @@ function showCalendar() {
     barChartEl.classList.add('hidden');
     calendarEl.classList.remove('hidden');
     backBtn.classList.add('hidden');
+    getMostRecentBtn.classList.remove('hidden');
+    viewLevel2Btn.classList.add('hidden');
     title.textContent = "Choose a day:";
 }
 
@@ -159,3 +167,50 @@ document.addEventListener('timezone-change', (e) => {
 document.addEventListener("clear-all-overlays", (e) => {
     showCalendar();
 })
+
+
+getMostRecentBtn.addEventListener('click', async () => {
+    if (!currentRadar) {
+        alert('No radar selected');
+        return;
+    }
+
+    getMostRecentBtn.textContent = 'Fetching...';
+    getMostRecentBtn.disabled = true;
+
+    try {
+        // Fetch today's files
+        const today = new Date();
+        const files = await fetchFilesForDate(currentRadar, today);
+
+        if (files.length === 0) {
+            alert('No files found for today');
+            getMostRecentBtn.textContent = 'Get Most Recent';
+            getMostRecentBtn.disabled = false;
+            return;
+        }
+
+        // Get the last (most recent) file
+        const mostRecentFile = files[files.length - 1];
+        const url = `https://unidata-nexrad-level2.s3.amazonaws.com/${mostRecentFile}`;
+
+        // Decode it
+        document.dispatchEvent(new CustomEvent('decode-requested', { detail: { url } }));
+
+    } catch (err) {
+        console.error('Error fetching most recent file:', err);
+        alert('Error: ' + err.message);
+        getMostRecentBtn.textContent = 'Get Most Recent';
+        getMostRecentBtn.disabled = false;
+    }
+});
+
+document.addEventListener('decode-success', () => {
+    getMostRecentBtn.textContent = 'Get Most Recent';
+    getMostRecentBtn.disabled = false;
+});
+
+document.addEventListener('decode-error', () => {
+    getMostRecentBtn.textContent = 'Get Most Recent';
+    getMostRecentBtn.disabled = false;
+});

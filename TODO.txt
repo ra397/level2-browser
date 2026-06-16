@@ -1,0 +1,7 @@
+TODO:
+Explicit close
+Make color less faint, more sharp/contrast
+Add NEXRAD marker toggle and color and size
+Most Recent
+MRMS Archive Daily Update
+Wind Farm Layer

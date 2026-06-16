@@ -67,7 +67,8 @@
 <!--    </div>-->
 
     <div id="level2-menu" class="hidden">
-<!--        <div id="level2-instructions">-->
+        <span class="close-btn">&#10006;</span>
+        <!--        <div id="level2-instructions">-->
 <!--            <ol style="padding-left: 20px; font-size: 14px; color: #333;">-->
 <!--                <li>Click <a target="_blank" href="https://unidata-nexrad-level2.s3.amazonaws.com/index.html" style="font-weight: bold; color: #5c2d91;">here</a> to open the file list.</li>-->
 <!--                <li><strong>Right-click</strong> the file you want and select <strong>"Copy link address"</strong>.</li>-->
@@ -167,12 +168,41 @@
     </div>
 
     <div id="map-layers" class="hidden">
+        <span class="close-btn">&#10006;</span>
         <div class="menu-header">
             <h2>Map Layers</h2>
             <p class="menu-subtitle">Manage the visibility and style of each layer.</p>
         </div>
 
         <ul class="layers-list">
+            <li class="layer-item" data-layer="nexrad">
+                <div class="layer-header">
+                    <div class="header-left">
+                        <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+                        <span class="layer-label">NEXRAD Radars</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="layer-controls">
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Color:</label>
+                            <div class="color-wrapper">
+                                <input type="color" value="#ff0000">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label>Size:</label>
+                            <input type="number" value="4.0" min="2.0" max="6.0" step="0.5" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+            </li>
+
             <li class="layer-item" data-layer="usgs">
                 <div class="layer-header">
                     <div class="header-left">
@@ -264,6 +294,7 @@
     </div>
 
     <div id="settings-menu" class="hidden">
+        <span class="close-btn">&#10006;</span>
         <div class="menu-header">
             <h2>Settings</h2>
         </div>
@@ -342,7 +373,10 @@
         </div>
 
         <div id="chart"></div>
-        <button id="viewLevel2Btn" class="submit-btn hidden">View Level II</button>
+        <div class="mrms-index-buttons">
+            <button id="getMostRecentBtn" class="submit-btn">Get Most Recent</button>
+            <button id="viewLevel2Btn" class="submit-btn hidden">View Level II</button>
+        </div>
     </div>
 
 <!--    <div id="player-container">-->

@@ -21,6 +21,34 @@ mapReady.then(() => {
         nexradMarkers.setColor("red");
         nexradMarkers.setSize(4.0);
 
+        // Add menu listeners for NEXRAD layer controls
+        const layerItemElement = document.querySelector('[data-layer="nexrad"]');
+        if (layerItemElement) {
+            const toggle = layerItemElement.querySelector('.toggle-switch input');
+            const colorInput = layerItemElement.querySelector('input[type="color"]');
+            const sizeInput = layerItemElement.querySelector('input[type="number"]');
+
+            // Sync initial values
+            colorInput.value = nexradMarkers.getColor();
+            sizeInput.value = nexradMarkers.getSize();
+
+            toggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    nexradMarkers.show();
+                } else {
+                    nexradMarkers.hide();
+                }
+            });
+
+            colorInput.addEventListener('change', (e) => {
+                nexradMarkers.setColor(e.target.value);
+            });
+
+            sizeInput.addEventListener('input', (e) => {
+                nexradMarkers.setSize(parseFloat(e.target.value));
+            });
+        }
+
         // Handle marker clicks - select radar station
         nexradMarkers.onClick((markerObj) => {
             const radarId = markerObj.properties.id;
