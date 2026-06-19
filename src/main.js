@@ -33,6 +33,7 @@ import './components/graph.js';
 import {extractLevel2Timestamp, findNearestLevel2File} from "./components/menu.js";
 import {getCurrentFrameTime} from "./components/barChart.js";
 import {setCloseTimeoutDisabled} from "./components/sidebar.js";
+import "./deckglLayers.js";
 
 const PRODUCT_CONFIG = {
     REF: { palette: REF_PALETTE, minValue: -32, maxValue: 94.5, units: 'dBZ', labelStep: 2 },

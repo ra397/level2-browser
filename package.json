@@ -12,6 +12,10 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@deck.gl/aggregation-layers": "^9.3.4",
+    "@deck.gl/core": "^9.3.4",
+    "@deck.gl/google-maps": "^9.3.4",
+    "@deck.gl/layers": "^9.3.4",
     "@googlemaps/js-api-loader": "^2.0.2",
     "buffer": "^6.0.3",
     "geobuf": "^3.0.2",
