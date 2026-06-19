@@ -111,6 +111,8 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
     const DAY = 86400;
     const dayStart = Math.floor(dayTimestamp / DAY) * DAY;
 
+    console.log(tzOffset);
+
     const hourlyData = [];
     for (let h = 0; h < 24; h++) {
         const hourStart = dayStart + h * HOUR;
@@ -119,7 +121,7 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
         // Find all entries within this hour (adjust raw timestamps by tzOffset)
         const hourEntries = [];
         for (let i = 0; i < timestamps.length; i++) {
-            const adjustedTs = timestamps[i] - tzOffset;
+            const adjustedTs = timestamps[i] + tzOffset;
             if (adjustedTs >= hourStart && adjustedTs < hourEnd) {
                 hourEntries.push(i);
             }
@@ -148,12 +150,12 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
             }
         }
 
-        const formattedTime = `${String(h+1).padStart(2, '0')}:00`;
+        const formattedTime = `${String(h).padStart(2, '0')}:00`;
 
         hourlyData.push({
             label: formattedTime,
             value: value,
-            timestamp: new Date((hourStart - tzOffset + 3600) * 1000)
+            timestamp: new Date((hourStart - tzOffset) * 1000)
         });
     }
 
