@@ -79,7 +79,7 @@ let calendar = null;
 
 async function initArchive(e) {
     currentRadar = e.detail['radarId'];
-    radarData = await loadRadarData(`/nexrad-l2/data/mrms/${currentRadar}_${currentYear}.json`);
+    radarData = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${currentYear}`);
     calendar = new Calendar(
         new Date(2020, 9, 14),   // startDate
         new Date(),                                    // endDate
@@ -113,7 +113,7 @@ async function handleYearChange(direction) {
         prevBtn.disabled = true;
         nextBtn.disabled = true;
 
-        radarData = await loadRadarData(`/nexrad-l2/data/mrms/${currentRadar}_${targetYear}.json`);
+        radarData = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${targetYear}`);
 
         // Only updates state if fetch succeeds
         currentYear = targetYear;
