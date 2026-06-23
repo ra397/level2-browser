@@ -9,13 +9,13 @@ async function loadData(filename) {
         const res = await fetch(filename);
 
         // NGINX already does this:
-        // if (filename.endsWith(".gz")) {
-        //     const ds = new DecompressionStream("gzip");
-        //     const decompressedStream = res.body.pipeThrough(ds);
-        //     const decompressedBuffer = await new Response(decompressedStream).arrayBuffer();
-        //     const decompressedText = new TextDecoder().decode(decompressedBuffer);
-        //     return JSON.parse(decompressedText);
-        // }
+        if (filename.endsWith(".gz")) {
+            const ds = new DecompressionStream("gzip");
+            const decompressedStream = res.body.pipeThrough(ds);
+            const decompressedBuffer = await new Response(decompressedStream).arrayBuffer();
+            const decompressedText = new TextDecoder().decode(decompressedBuffer);
+            return JSON.parse(decompressedText);
+        }
 
         return await res.json();
     } catch (e) {
