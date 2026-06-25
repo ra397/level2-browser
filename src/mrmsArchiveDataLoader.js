@@ -12,13 +12,6 @@ const DTYPES = {
     "<i1": Int8Array,
 };
 
-function computeFakeMax(mean) {
-    if (mean <= 0) return 0;
-    const hashFactor = ((Math.floor(mean * 1000) * 2654435761) >>> 0) % 1000 / 1000;
-    return mean * (1.3 + hashFactor * 0.7);
-}
-
-
 function decodeField(field) {
     // scalar fields (e.g. total_area) are stored as a plain number
     if (typeof field.data === "number") return field.data;
@@ -42,6 +35,7 @@ export function decodeRadarYear(json) {
         timestamps: decodeField(json.timestamps), // unix seconds
         area_rain: decodeField(json.area_rain),
         volume_rain: decodeField(json.volume_rain),
+        max_rain: decodeField(json.max_rain),
         total_area: decodeField(json.total_area),
     };
 }
@@ -58,19 +52,19 @@ export function getTimezoneOffset(useLocal) {
     return -new Date().getTimezoneOffset() * 60;
 }
 
-export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area }, aggregationMethod = 'mean', tzOffset = 0) {
+export function aggregateByDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, aggregationMethod = 'mean', tzOffset = 0) {
     const DAY = 86400;
     const days = new Map();
 
     for (let i = 0; i < timestamps.length; i++) {
-        // Adjust timestamp by timezone offset before computing day boundary
         const adjustedTs = timestamps[i] - tzOffset;
         const dayStart = Math.floor(adjustedTs / DAY) * DAY;
         let d = days.get(dayStart);
-        if (!d) days.set(dayStart, (d = { areaSum: 0, areaMax: -Infinity, count: 0, volSum: 0 }));
+        if (!d) days.set(dayStart, (d = { areaSum: 0, areaMax: -Infinity, count: 0, volSum: 0, maxRain: -Infinity }));
         d.areaSum += area_rain[i];
         d.areaMax = Math.max(d.areaMax, area_rain[i]);
         d.volSum += volume_rain[i];
+        d.maxRain = Math.max(d.maxRain, max_rain[i]);
         d.count++;
     }
 
@@ -80,7 +74,6 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area 
     const vol = new Float64Array(starts.length);
     const mean = new Float64Array(starts.length);
     const max = new Float64Array(starts.length);
-
 
     starts.forEach((start, i) => {
         const d = days.get(start);
@@ -92,7 +85,7 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area 
         area[i] = wettedArea / total_area;
         vol[i] = d.volSum;
         mean[i] = d.areaSum > 0 ? d.volSum / (d.areaSum / d.count) : 0;
-        max[i] = computeFakeMax(mean[i]);
+        max[i] = d.maxRain > 0 ? d.maxRain : 0;
     });
 
     return { timestamps: ts, area_rain: area, volume_rain: vol, mean_rain: mean, max_rain: max };
@@ -106,7 +99,7 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, total_area 
  * @param {string} variable - Variable to extract
  * @param {number} tzOffset - Timezone offset in seconds (0 for UTC)
  */
-export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_area }, dayTimestamp, variable, tzOffset = 0) {
+export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, dayTimestamp, variable, tzOffset = 0) {
     const HOUR = 3600;
     const DAY = 86400;
     const dayStart = Math.floor(dayTimestamp / DAY) * DAY;
@@ -142,11 +135,8 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, total_
                 const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
                 value = areaSum > 0 ? volSum / (areaSum / hourEntries.length) : 0;
             } else if (variable === 'max_rain') {
-                // Compute mean first, then derive fake max
-                const volSum = hourEntries.reduce((sum, idx) => sum + volume_rain[idx], 0);
-                const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
-                const meanVal = areaSum > 0 ? volSum / (areaSum / hourEntries.length) : 0;
-                value = computeFakeMax(meanVal);
+                // Use real max_rain - take the maximum value for the hour
+                value = hourEntries.reduce((maxVal, idx) => Math.max(maxVal, max_rain[idx]), 0);
             }
         }
 

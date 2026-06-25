@@ -11,12 +11,18 @@ export const colorMap = {
         { max: 150,   color: "#fdae61" },
         { max: Infinity,   color: "#d7191c" }
     ],
-    "max_rain": [ // mm (fake max)
-        { max: 75,   color: "" },
-        { max: 150,   color: "#ffffbf" },
-        { max: 250,  color: "#fdae61" },
+    "max_rain": [ // mm
+        { max: 50,   color: "" },
+        { max: 75,   color: "#ffffbf" },
+        { max: 100,  color: "#fdae61" },
         { max: Infinity, color: "#d7191c" }
     ],
+    "volume_rain": [ // m³ (displayed as Liters in tooltip)
+        { max: 1e11,   color: "" },
+        { max: 1e12,   color: "#ffffbf" },
+        { max: 1e13,   color: "#fdae61" },
+        { max: Infinity, color: "#d7191c" }
+    ]
 };
 
 
