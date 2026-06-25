@@ -41,24 +41,28 @@ export function decodeRadarYear(json) {
 }
 
 /**
- * Get timezone offset in seconds.
- * @param {boolean} useLocal - If true, returns local timezone offset; if false, returns 0 (UTC)
- * @returns {number} Offset in seconds to subtract from UTC timestamp to get local day boundary
+ * Transform timestamps to local time.
+ * @param {object} data - Raw radar data with UTC timestamps
+ * @returns {object} - Data with timestamps shifted to local time
  */
-export function getTimezoneOffset(useLocal) {
-    if (!useLocal) return 0;
-    // JavaScript getTimezoneOffset returns minutes, positive for west of UTC
-    // We need seconds to subtract from UTC to align with local midnight
-    return -new Date().getTimezoneOffset() * 60;
+export function transformToLocal(data) {
+    const offset = -new Date().getTimezoneOffset() * 60;
+    const localTimestamps = new Uint32Array(data.timestamps.length);
+    for (let i = 0; i < data.timestamps.length; i++) {
+        localTimestamps[i] = data.timestamps[i] + offset;
+    }
+    return {
+        ...data,
+        timestamps: localTimestamps
+    };
 }
 
-export function aggregateByDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, aggregationMethod = 'mean', tzOffset = 0) {
+export function aggregateByDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, aggregationMethod = 'mean') {
     const DAY = 86400;
     const days = new Map();
 
     for (let i = 0; i < timestamps.length; i++) {
-        const adjustedTs = timestamps[i] - tzOffset;
-        const dayStart = Math.floor(adjustedTs / DAY) * DAY;
+        const dayStart = Math.floor(timestamps[i] / DAY) * DAY;
         let d = days.get(dayStart);
         if (!d) days.set(dayStart, (d = { areaSum: 0, areaMax: -Infinity, count: 0, volSum: 0, maxRain: -Infinity }));
         d.areaSum += area_rain[i];
@@ -84,7 +88,7 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, max_rain, t
         ts[i] = start;
         area[i] = wettedArea / total_area;
         vol[i] = d.volSum;
-        mean[i] = d.areaSum > 0 ? d.volSum / (d.areaSum / d.count) : 0;
+        mean[i] = d.areaSum > 0 ? d.volSum / d.areaSum : 0;
         max[i] = d.maxRain > 0 ? d.maxRain : 0;
     });
 
@@ -92,30 +96,24 @@ export function aggregateByDay({ timestamps, area_rain, volume_rain, max_rain, t
 }
 
 /**
- * Get hourly data for a specific day (unix timestamp at day start in adjusted time).
- * Returns an array of 24 hourly entries with the selected variable's values.
- * @param {object} data - Raw radar data
- * @param {number} dayTimestamp - Day start timestamp (already adjusted for timezone)
+ * Get hourly data for a specific day.
+ * @param {object} data - Radar data (already in correct timezone)
+ * @param {number} dayTimestamp - Day start timestamp
  * @param {string} variable - Variable to extract
- * @param {number} tzOffset - Timezone offset in seconds (0 for UTC)
  */
-export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, dayTimestamp, variable, tzOffset = 0) {
+export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, max_rain, total_area }, dayTimestamp, variable) {
     const HOUR = 3600;
     const DAY = 86400;
     const dayStart = Math.floor(dayTimestamp / DAY) * DAY;
-
-    console.log(tzOffset);
 
     const hourlyData = [];
     for (let h = 0; h < 24; h++) {
         const hourStart = dayStart + h * HOUR;
         const hourEnd = hourStart + HOUR;
 
-        // Find all entries within this hour (adjust raw timestamps by tzOffset)
         const hourEntries = [];
         for (let i = 0; i < timestamps.length; i++) {
-            const adjustedTs = timestamps[i] + tzOffset;
-            if (adjustedTs >= hourStart && adjustedTs < hourEnd) {
+            if (timestamps[i] >= hourStart && timestamps[i] < hourEnd) {
                 hourEntries.push(i);
             }
         }
@@ -123,29 +121,23 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, max_ra
         let value = 0;
         if (hourEntries.length > 0) {
             if (variable === 'volume_rain') {
-                // Sum of volumes for the hour
                 value = hourEntries.reduce((sum, idx) => sum + volume_rain[idx], 0);
             } else if (variable === 'area_rain') {
-                // Mean of area percentages for the hour
                 const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
                 value = (areaSum / hourEntries.length) / total_area;
             } else if (variable === 'mean_rain') {
-                // Mean rain depth = total volume / total wetted area
                 const volSum = hourEntries.reduce((sum, idx) => sum + volume_rain[idx], 0);
                 const areaSum = hourEntries.reduce((sum, idx) => sum + area_rain[idx], 0);
-                value = areaSum > 0 ? volSum / (areaSum / hourEntries.length) : 0;
+                value = areaSum > 0 ? volSum / areaSum : 0;
             } else if (variable === 'max_rain') {
-                // Use real max_rain - take the maximum value for the hour
                 value = hourEntries.reduce((maxVal, idx) => Math.max(maxVal, max_rain[idx]), 0);
             }
         }
 
-        const formattedTime = `${String(h).padStart(2, '0')}:00`;
-
         hourlyData.push({
-            label: formattedTime,
+            label: `${String(h).padStart(2, '0')}:00`,
             value: value,
-            timestamp: new Date((hourStart - tzOffset) * 1000)
+            timestamp: new Date(hourStart * 1000)
         });
     }
 

@@ -421,6 +421,7 @@ viewLevel2Btn.addEventListener('click', async () => {
     }
 
     const frameTime = getCurrentFrameTime();
+    console.log(frameTime)
 
     if (!frameTime) {
         alert('Please select an hour.');

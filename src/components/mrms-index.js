@@ -1,5 +1,5 @@
 import { Calendar, colorMap } from "./calendar.js";
-import { aggregateByDay, loadRadarData, getHourlyDataForDay, getTimezoneOffset } from "../mrmsArchiveDataLoader.js";
+import { aggregateByDay, loadRadarData, getHourlyDataForDay, transformToLocal } from "../mrmsArchiveDataLoader.js";
 import { barChart } from "./barChart.js";
 import {DragContainer, draggerClassList} from "./draggable.js";
 import {fetchFilesForDate} from "./menu.js";
@@ -16,7 +16,6 @@ const calendarEl = document.getElementById('calendar');
 const barChartEl = document.getElementById('chart');
 
 const variableSelectionEl = document.getElementById("variable-selection");
-// const aggregationMethodSelectionEl = document.getElementById("aggregation-method-selection");
 const backBtn = document.getElementById('back');
 
 const getMostRecentBtn = document.getElementById('getMostRecentBtn');
@@ -25,11 +24,13 @@ const viewLevel2Btn = document.getElementById('viewLevel2Btn');
 let currentRadar = null;
 let currentYear = 2026;
 let useLocalTime = true;
-let radarData = null;
+
+let radarDataUTC = null;
+let radarDataLocal = null;
 let selectedDay = null;
 
-function getCurrentTzOffset() {
-    return getTimezoneOffset(useLocalTime);
+function getCurrentData() {
+    return useLocalTime ? radarDataLocal : radarDataUTC;
 }
 
 const title = document.querySelector('.mrms-index-popup > .title')
@@ -56,8 +57,7 @@ function updateBarChart() {
     if (!selectedDay) return;
 
     const variable = variableSelectionEl.value;
-    const tzOffset = getCurrentTzOffset();
-    const hourlyData = getHourlyDataForDay(radarData, selectedDay.timestamp, variable, tzOffset);
+    const hourlyData = getHourlyDataForDay(getCurrentData(), selectedDay.timestamp, variable);
 
     barChart(barChartEl, {
         data: hourlyData,
@@ -79,17 +79,18 @@ let calendar = null;
 
 async function initArchive(e) {
     currentRadar = e.detail['radarId'];
-    radarData = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${currentYear}`);
+    radarDataUTC = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${currentYear}`);
+    radarDataLocal = transformToLocal(radarDataUTC);
+
     calendar = new Calendar(
         new Date(2020, 9, 14),   // startDate
-        new Date(),                                    // endDate
+        new Date(),              // endDate
         currentYear,
         calendarEl,
-        aggregateByDay(radarData, 'mean', getCurrentTzOffset()),
+        aggregateByDay(getCurrentData(), 'mean'),
         variableSelectionEl.value,
         colorMap,
-        handleDayClick,
-        getCurrentTzOffset()
+        handleDayClick
     );
     updateBarChart();
     popup.classList.remove('hidden');
@@ -113,11 +114,11 @@ async function handleYearChange(direction) {
         prevBtn.disabled = true;
         nextBtn.disabled = true;
 
-        radarData = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${targetYear}`);
+        radarDataUTC = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${targetYear}`);
+        radarDataLocal = transformToLocal(radarDataUTC);
 
-        // Only updates state if fetch succeeds
         currentYear = targetYear;
-        calendar.updateData(aggregateByDay(radarData, 'mean', getCurrentTzOffset()));
+        calendar.updateData(aggregateByDay(getCurrentData(), 'mean'));
         calendar.setYear(currentYear);
 
     } catch (error) {
@@ -139,28 +140,17 @@ variableSelectionEl.addEventListener('change',  () => {
     updateBarChart();
 });
 
-// aggregationMethodSelectionEl.addEventListener('change',() => {
-//     const newAggregationMethod = aggregationMethodSelectionEl.value;
-//     const newData = aggregateByDay(radarData, newAggregationMethod, getCurrentTzOffset());
-//     calendar.updateData(newData);
-// });
-
 document.addEventListener('timezone-change', (e) => {
     useLocalTime = e.detail.timezone === 'local';
-    const tzOffset = getCurrentTzOffset();
 
-    // Recalculate selected day timestamp for new timezone
+    // Recalculate selected day for new timezone
     if (selectedDay) {
         const DAY = 86400;
-        const utcTimestamp = Date.UTC(selectedDay.date.getFullYear(), selectedDay.date.getMonth(), selectedDay.date.getDate()) / 1000;
-        const adjustedTimestamp = utcTimestamp - tzOffset;
-        selectedDay.timestamp = Math.floor(adjustedTimestamp / DAY) * DAY;
+        const utcMidnight = Date.UTC(selectedDay.date.getFullYear(), selectedDay.date.getMonth(), selectedDay.date.getDate()) / 1000;
+        selectedDay.timestamp = Math.floor(utcMidnight / DAY) * DAY;
     }
 
-    // Re-aggregate data with new timezone
-    const newData = aggregateByDay(radarData, 'mean', tzOffset);
-    calendar.setTimezoneOffset(tzOffset);
-    calendar.updateData(newData);
+    calendar.updateData(aggregateByDay(getCurrentData(), 'mean'));
     updateBarChart();
 });
 
@@ -214,3 +204,26 @@ document.addEventListener('decode-error', () => {
     getMostRecentBtn.textContent = 'Get Most Recent';
     getMostRecentBtn.disabled = false;
 });
+
+export const formatValue = (value, variable) => {
+    if (variable === "max_rain") {
+        return value.toFixed(2) + " mm";
+    } else if (variable === "area_rain") {
+        return (value * 100).toFixed(2) + "%";
+    } else if (variable === "mean_rain") {
+        return value.toFixed(2) + " mm";
+    } else if (variable === "volume_rain") {
+        // Convert mm³ to Liters (1 L = 1,000,000 mm³)
+        const liters = value / 1e6;
+        if (liters >= 1e9) {
+            return (liters / 1e9).toFixed(2) + " GL"; // Gigaliters
+        } else if (liters >= 1e6) {
+            return (liters / 1e6).toFixed(2) + " ML"; // Megaliters
+        } else if (liters >= 1e3) {
+            return (liters / 1e3).toFixed(2) + " kL"; // Kiloliters
+        } else {
+            return liters.toFixed(2) + " L";
+        }
+    }
+    return value.toFixed(2);
+};

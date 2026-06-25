@@ -1,3 +1,5 @@
+import { formatValue } from "./mrms-index.js";
+
 export const colorMap = {
     "area_rain": [ // %
         { max: 0.1,   color: "" },
@@ -31,7 +33,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const DOW = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
 export class Calendar {
-    constructor(startDate, endDate, currentYear, container, data, variable, colorMap, onDayClick, tzOffset = 0) {
+    constructor(startDate, endDate, currentYear, container, data, variable, colorMap, onDayClick) {
         this.container = container;
         this.monthsEl = this.container.querySelector('#months');
 
@@ -44,13 +46,8 @@ export class Calendar {
 
         this.variable = variable;
         this.onDayClick = onDayClick;
-        this.tzOffset = tzOffset;
 
         this.render();
-    }
-
-    setTimezoneOffset(tzOffset) {
-        this.tzOffset = tzOffset;
     }
 
     setYear(year) {
@@ -113,12 +110,10 @@ export class Calendar {
             const isOutOfRange = currentDate < this.startDate || currentDate > this.endDate;
             if (isOutOfRange) el.classList.add('disabled');
 
-            // Compute day timestamp adjusted for timezone
-            // When using local time, we need the timestamp that represents local midnight
-            const utcTimestamp = Date.UTC(this.currentYear, month, d) / 1000;
-            const adjustedTimestamp = utcTimestamp - this.tzOffset;
+            // Use UTC midnight as the day key
             const DAY = 86400;
-            const dayStart = Math.floor(adjustedTimestamp / DAY) * DAY;
+            const utcMidnight = Date.UTC(this.currentYear, month, d) / 1000;
+            const dayStart = Math.floor(utcMidnight / DAY) * DAY;
             const dataIndex = this.data['timestamps'].indexOf(dayStart);
 
             if (dataIndex !== -1) {
@@ -127,31 +122,7 @@ export class Calendar {
                 const colorMap = this.colorMap[this.variable];
                 el.style.background = this.#getColor(dataVal, colorMap);
 
-
-                // Add to element title
-                let formattedVal;
-                if (this.variable === "max_rain") {
-                    formattedVal = dataVal.toFixed(2) + " mm";
-                } else if (this.variable === "area_rain") {
-                    formattedVal = (dataVal * 100).toFixed(2) + "%";
-                } else if (this.variable === "mean_rain") {
-                    formattedVal = dataVal.toFixed(2) + " mm";
-                } else if (this.variable === "volume_rain") {
-                    // Convert mm³ to Liters (1 L = 1,000,000 mm³)
-                    const liters = dataVal / 1e6;
-                    if (liters >= 1e9) {
-                        formattedVal = (liters / 1e9).toFixed(2) + " GL"; // Gigaliters
-                    } else if (liters >= 1e6) {
-                        formattedVal = (liters / 1e6).toFixed(2) + " ML"; // Megaliters
-                    } else if (liters >= 1e3) {
-                        formattedVal = (liters / 1e3).toFixed(2) + " kL"; // Kiloliters
-                    } else {
-                        formattedVal = liters.toFixed(2) + " L";
-                    }
-                } else {
-                    formattedVal = dataVal.toFixed(2);
-                }
-                el.title = formattedVal;
+                el.title = formatValue(dataVal, this.variable);
             } else {
                 el.dataset.val = '-1';
                 el.title = "No data";
