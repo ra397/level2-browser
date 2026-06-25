@@ -137,7 +137,7 @@ export function getHourlyDataForDay({ timestamps, area_rain, volume_rain, max_ra
         hourlyData.push({
             label: `${String(h).padStart(2, '0')}:00`,
             value: value,
-            timestamp: new Date(hourStart * 1000)
+            timestamp: new Date((hourStart + new Date().getTimezoneOffset() * 60) * 1000)
         });
     }
 
