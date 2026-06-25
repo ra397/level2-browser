@@ -133,9 +133,21 @@ export class Calendar {
                 if (this.variable === "max_rain") {
                     formattedVal = dataVal.toFixed(2) + " mm";
                 } else if (this.variable === "area_rain") {
-                    formattedVal = (dataVal * 100).toFixed(2) + "%"; // if stored as decimal 0-1
+                    formattedVal = (dataVal * 100).toFixed(2) + "%";
                 } else if (this.variable === "mean_rain") {
                     formattedVal = dataVal.toFixed(2) + " mm";
+                } else if (this.variable === "volume_rain") {
+                    // Convert mm³ to Liters (1 L = 1,000,000 mm³)
+                    const liters = dataVal / 1e6;
+                    if (liters >= 1e9) {
+                        formattedVal = (liters / 1e9).toFixed(2) + " GL"; // Gigaliters
+                    } else if (liters >= 1e6) {
+                        formattedVal = (liters / 1e6).toFixed(2) + " ML"; // Megaliters
+                    } else if (liters >= 1e3) {
+                        formattedVal = (liters / 1e3).toFixed(2) + " kL"; // Kiloliters
+                    } else {
+                        formattedVal = liters.toFixed(2) + " L";
+                    }
                 } else {
                     formattedVal = dataVal.toFixed(2);
                 }
