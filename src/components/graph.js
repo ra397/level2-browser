@@ -1345,4 +1345,5 @@ if (graphWrapper) {
     graphWrapper.style.left = rect.left + 'px';
 
     graphWrapper.drag = new DragContainer(graphWrapper, draggerClassList);
+    graphWrapper.drag.addTitleBar('.graph-header');
 }

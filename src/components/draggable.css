@@ -2,7 +2,7 @@ div.drag-cnr {
     --drag-off: -5px;
     --drag-size: 15px;
     --drag-brd-wdt: 4px;
-    --drag-brd-clr: var(--blue);
+    --drag-brd-clr: rgb(128 128 128 / 30%);
     position: absolute;
     width: var(--drag-size);
     height: var(--drag-size);
@@ -15,7 +15,7 @@ div.drag-cnr {
 }
 
 @keyframes border-pulsate {
-    0% { border-color: var(--drag-brd-clr); }
+    0% { border-color: #0D5C63; }
     100% { border-color: var(--drag-brd-clr); }
 }
 
@@ -23,10 +23,11 @@ div.drag-cnr:hover {
     width: 20px;
     height: 20px;
     background: #ffffff;
-    border-color: var(--drag-brd-clr);
+    border-color: #0D5C63;
     cursor: move;
     transition: all 0.133s;
     animation: none;
+
     z-index: 2;
 }
 
