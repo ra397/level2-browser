@@ -8,6 +8,11 @@ export default defineConfig({
                 target: 'https://visualriver.net',
                 changeOrigin: true,
                 secure: false,
+            },
+            '/mrms-stats/summary': {
+                target: 'https://visualriver.net',
+                changeOrigin: true,
+                secure: false,
             }
         }
     }

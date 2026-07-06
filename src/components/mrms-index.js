@@ -1,4 +1,4 @@
-import { Calendar, colorMap } from "./calendar.js";
+import { Calendar } from "./calendar.js";
 import { aggregateByDay, loadRadarData, getHourlyDataForDay, transformToLocal } from "../mrmsArchiveDataLoader.js";
 import { barChart } from "./barChart.js";
 import {DragContainer, draggerClassList} from "./draggable.js";
@@ -75,10 +75,39 @@ function handleDayClick(dayTimestamp, date) {
     showBarChart();
 }
 
+function buildColorMap(summary) {
+    const colors = [
+        "",
+        "#ffffbf",
+        "#fdae61",
+        "#d7191c"
+    ];
+
+    const map = {};
+
+    for (const [variable, stats] of Object.entries(summary)) {
+        map[variable] = [
+            { max: stats.p67, color: colors[0] },
+            { max: stats.p80, color: colors[1] },
+            { max: stats.p97, color: colors[2] },
+            { max: Infinity, color: colors[3] }
+        ];
+    }
+
+    return map;
+}
+
 let calendar = null;
 
 async function initArchive(e) {
     currentRadar = e.detail['radarId'];
+
+    const summary = await fetch(
+        `/mrms-stats/summary?radar=${currentRadar}`
+    ).then(r => r.json());
+
+    const colorMap = buildColorMap(summary);
+
     radarDataUTC = await loadRadarData(`/mrms-stats?radar=${currentRadar}&year=${currentYear}`);
     radarDataLocal = transformToLocal(radarDataUTC);
 
