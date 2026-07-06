@@ -2,7 +2,7 @@ import { formatValue } from "./mrms-index.js";
 
 const viewLevel2Btn = document.getElementById("viewLevel2Btn");
 
-export function barChart(el, { data, onSelect, labelEvery = 1, variable }) {
+export function barChart(el, { data, onSelect, labelEvery = 3, variable }) {
     const max = Math.max(...data.map(d => d.value)) || 1;
     el.classList.add("bar-chart");
     el.innerHTML = `
