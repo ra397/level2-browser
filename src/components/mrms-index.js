@@ -12,6 +12,7 @@ const VARIABLE_LABELS = {
 
 const popup = document.getElementsByClassName("mrms-index-popup")[0];
 popup.drag = new DragContainer(popup, draggerClassList);
+popup.drag.addTitleBar('.title');
 const calendarEl = document.getElementById('calendar');
 const barChartEl = document.getElementById('chart');
 

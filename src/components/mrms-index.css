@@ -52,6 +52,8 @@ select {
     font-size: 1.1em;
     font-weight: bold;
     text-align: center;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #ccc;
 }
 
 .hidden {
