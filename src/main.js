@@ -835,6 +835,8 @@ function gatherAXSData(pointA, pointB) {
 
         const gates = [];
 
+        const stationElevM = coveringRadar.terrainData?.terrainProfile?.[0] || 0;
+
         for (const sweep of sweepsToUse) {
             let radarData;
             try {
@@ -869,7 +871,7 @@ function gatherAXSData(pointA, pointB) {
             const dataIndex = azimuthIndex * radarData.ranges.length + rangeIndex;
             const value = radarData.data[dataIndex];
 
-            const beamHeights = calculateBeamHeightsAtRange(rangeKm, sweep.elevation);
+            const beamHeights = calculateBeamHeightsAtRange(rangeKm, sweep.elevation, stationElevM);
 
             gates.push({
                 elevation: sweep.elevation,
@@ -942,7 +944,7 @@ function findRadarForPoint(lat, lng) {
     return null;
 }
 
-function calculateBeamHeightsAtRange(rangeKm, elevationDeg) {
+function calculateBeamHeightsAtRange(rangeKm, elevationDeg, stationElevM = 0) {
     const EARTH_RADIUS = 6371000; // meters
     const K0 = 1 / (4 * EARTH_RADIUS);
     const BEAMWIDTH = 0.9; // degrees
@@ -969,10 +971,12 @@ function calculateBeamHeightsAtRange(rangeKm, elevationDeg) {
         return (Math.sqrt((a + H) ** 2 + S ** 2) - a) / 1000; // km
     };
 
+    const stationElevKm = stationElevM / 1000;
+
     return {
-        center: calcHeight(elevationDeg),
-        top: calcHeight(elevationDeg + HALF_BW),
-        bottom: calcHeight(elevationDeg - HALF_BW)
+        center: calcHeight(elevationDeg) + stationElevKm,
+        top: calcHeight(elevationDeg + HALF_BW) + stationElevKm,
+        bottom: calcHeight(elevationDeg - HALF_BW) + stationElevKm
     };
 }
 
