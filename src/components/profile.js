@@ -220,7 +220,7 @@ export class Profile {
         this.axsMarkerADragEndListener = this.axsMarkerA.addListener('dragend', (event) => {
             const dragPos = event.latLng;
             const pointB = new google.maps.LatLng(this.#axsPointB.lat, this.#axsPointB.lng);
-            const maxDistanceM = 230_000;
+            const maxDistanceM = 460_000;
 
             const distFromB = google.maps.geometry.spherical.computeDistanceBetween(pointB, dragPos);
 
@@ -247,7 +247,7 @@ export class Profile {
         this.axsMarkerBDragEndListener = this.axsMarkerB.addListener('dragend', (event) => {
             const dragPos = event.latLng;
             const pointA = new google.maps.LatLng(this.#axsPointA.lat, this.#axsPointA.lng);
-            const maxDistanceM = 230_000;
+            const maxDistanceM = 460_000;
 
             const distFromA = google.maps.geometry.spherical.computeDistanceBetween(pointA, dragPos);
 
