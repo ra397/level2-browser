@@ -13,6 +13,14 @@ export class Profile {
         this.currentAzimuth = 0;
         this.radarId = radarId;
 
+        this.hoverMarker = null;
+        this._hoverListener = (e) => {
+            const { t, mode } = e.detail;
+            if (mode !== this.#mode) return;
+            this._updateHoverMarker(t);
+        };
+        document.addEventListener('profile-hover-position', this._hoverListener);
+
         this._setupAHI();
     }
 
@@ -327,6 +335,47 @@ export class Profile {
         };
     }
 
+    _updateHoverMarker(t) {
+        let position;
+
+        if (this.#mode === 'AHI') {
+            const distance = t * this.maxDistance_m;
+            position = this._getEdgePoint(this.lat, this.lng, distance, this.currentAzimuth);
+        } else if (this.#mode === 'AXS') {
+            if (!this.#axsPointA || !this.#axsPointB) return;
+            const a = new google.maps.LatLng(this.#axsPointA.lat, this.#axsPointA.lng);
+            const b = new google.maps.LatLng(this.#axsPointB.lat, this.#axsPointB.lng);
+            const interpolated = google.maps.geometry.spherical.interpolate(a, b, t);
+            position = { lat: interpolated.lat(), lng: interpolated.lng() };
+        } else if (this.#mode === 'RHI') {
+            const azimuth = (this.currentAzimuth + t * this.#sliceWidth) % 360;
+            const rangeM = this.#rangeKm * 1000;
+            position = this._getEdgePoint(this.lat, this.lng, rangeM, azimuth);
+        } else {
+            return;
+        }
+
+        if (!this.hoverMarker) {
+            this.hoverMarker = new google.maps.Marker({
+                position,
+                map: this.map,
+                icon: this._createMarkerIcon('black'),
+                clickable: false,
+                zIndex: 999,
+            });
+        } else {
+            this.hoverMarker.setPosition(position);
+            this.hoverMarker.setMap(this.map);
+        }
+    }
+
+    _removeHoverListener() {
+        if (this._hoverListener) {
+            document.removeEventListener('profile-hover-position', this._hoverListener);
+            this._hoverListener = null;
+        }
+    }
+
     _clearMapObjects() {
         if (this.dragListener) google.maps.event.removeListener(this.dragListener);
         if (this.dragEndListener) google.maps.event.removeListener(this.dragEndListener);
@@ -349,6 +398,9 @@ export class Profile {
         if (this.axsMarkerA) this.axsMarkerA.setMap(null);
         if (this.axsMarkerB) this.axsMarkerB.setMap(null);
         if (this.axsLine) this.axsLine.setMap(null);
+
+        if (this.hoverMarker) this.hoverMarker.setMap(null);
+        this.hoverMarker = null;
 
         this.dragListener = null;
         this.dragEndListener = null;
@@ -540,6 +592,7 @@ export class Profile {
 
     destroy() {
         this._clearMapObjects();
+        this._removeHoverListener();
     }
 
     hide() {
@@ -553,6 +606,7 @@ export class Profile {
         if (this.axsMarkerA) this.axsMarkerA.setMap(null);
         if (this.axsMarkerB) this.axsMarkerB.setMap(null);
         if (this.axsLine) this.axsLine.setMap(null);
+        if (this.hoverMarker) this.hoverMarker.setMap(null);
     }
 
     show() {
@@ -566,5 +620,6 @@ export class Profile {
         if (this.axsMarkerA) this.axsMarkerA.setMap(this.map);
         if (this.axsMarkerB) this.axsMarkerB.setMap(this.map);
         if (this.axsLine) this.axsLine.setMap(this.map);
+        if (this.hoverMarker) this.hoverMarker.setMap(this.map);
     }
 }

@@ -42,6 +42,8 @@ let pendingAXSLineLengthKm = 0;
 let isFolded = true;
 let hasData = false;
 
+let hoverLocked = false;
+
 function initFoldButton() {
     const foldBtn = document.getElementById('foldBtn');
     if (!foldBtn) return;
@@ -203,6 +205,7 @@ function createModeSwitcher() {
             currentProfileData = null;
             currentAXSData = null;
             beams = [];
+            hoverLocked = false;
 
             // Dispatch mode change FIRST so profile can set up and send data
             document.dispatchEvent(new CustomEvent('profile-mode-changed', {
@@ -1195,6 +1198,31 @@ container.addEventListener('mousemove', (e) => {
         tooltip.style.left = tx + 'px';
         tooltip.style.top = ty + 'px';
     }
+
+    if (!hoverLocked) {
+        // Dispatch hover position for map marker (AHI and AXS only)
+        if (currentMode === 'AHI') {
+            const rangeKm = (mx / vb.w) * MAX_RANGE_KM;
+            const t = Math.max(0, Math.min(1, rangeKm / MAX_RANGE_KM));
+            document.dispatchEvent(new CustomEvent('profile-hover-position', {
+                detail: {t, mode: 'AHI'}
+            }));
+        } else if (currentMode === 'AXS' && axsLineLengthKm > 0) {
+            const distanceKm = (mx / vb.w) * axsLineLengthKm;
+            const t = Math.max(0, Math.min(1, distanceKm / axsLineLengthKm));
+            document.dispatchEvent(new CustomEvent('profile-hover-position', {
+                detail: {t, mode: 'AXS'}
+            }));
+        } else if (currentMode === 'RHI') {
+            const sliceWidth = rhiEndAzimuth >= rhiStartAzimuth
+                ? rhiEndAzimuth - rhiStartAzimuth
+                : (360 - rhiStartAzimuth) + rhiEndAzimuth;
+            const t = Math.max(0, Math.min(1, mx / vb.w));
+            document.dispatchEvent(new CustomEvent('profile-hover-position', {
+                detail: {t, mode: 'RHI'}
+            }));
+        }
+    }
 });
 
 container.addEventListener('mouseleave', () => {
@@ -1203,6 +1231,13 @@ container.addEventListener('mouseleave', () => {
     const crossY = document.getElementById('crosshairY');
     if (crossX) crossX.style.display = 'none';
     if (crossY) crossY.style.display = 'none';
+});
+
+container.addEventListener('click', () => {
+    hoverLocked = !hoverLocked;
+    document.dispatchEvent(new CustomEvent('profile-hover-locked', {
+        detail: { locked: hoverLocked }
+    }));
 });
 
 // ─── Event Listeners ───
