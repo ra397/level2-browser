@@ -873,7 +873,9 @@ function renderAxesAHI() {
     yLabels.innerHTML = yTicks.map(v => `<span class="label">${v}</span>`).join('');
 
     const xTicks = [0, 50, 100, 150, 200, 230];
-    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
+    xLabels.innerHTML = xTicks.map(v =>
+        `<span class="label" style="left:${(v / MAX_RANGE_KM) * 100}%">${v}</span>`
+    ).join('');
 
     if (yTitle) yTitle.textContent = 'Height (km)';
     if (xTitle) xTitle.textContent = 'Ground Range (km)';
@@ -898,7 +900,9 @@ function renderAxesRHI() {
     for (let i = 0; i <= sliceWidth; i += 3) {
         xTicks.push(((rhiStartAzimuth + i) % 360).toFixed(0));
     }
-    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}°</span>`).join('');
+    xLabels.innerHTML = xTicks.map((v, i) =>
+        `<span class="label" style="left:${(i * 3 / sliceWidth) * 100}%">${v}°</span>`
+    ).join('');
 
     if (yTitle) yTitle.textContent = 'Height (km)';
     if (xTitle) xTitle.textContent = 'Azimuth (°)';
@@ -924,7 +928,9 @@ function renderAxesAXS() {
     if (axsLineLengthKm % distStep !== 0) {
         xTicks.push(axsLineLengthKm.toFixed(0));
     }
-    xLabels.innerHTML = xTicks.map(v => `<span class="label">${v}</span>`).join('');
+    xLabels.innerHTML = xTicks.map(v =>
+        `<span class="label" style="left:${(parseFloat(v) / axsLineLengthKm) * 100}%">${v}</span>`
+    ).join('');
 
     if (yTitle) yTitle.textContent = 'Height (km)';
     if (xTitle) xTitle.textContent = 'Distance (km)';

@@ -11,12 +11,32 @@
     height: fit-content;
 }
 
+.graph-content {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    background-color: white;
+}
+
 .y-axis-container {
-    display: flex;
-    align-items: stretch;
+    display: contents;
+}
+
+.y-axis-title {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 11px;
+    color: #5a6a8a;
+    text-align: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    margin-right: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .y-axis-labels {
+    grid-column: 2;
+    grid-row: 1;
     width: 30px;
     display: flex;
     flex-direction: column;
@@ -32,19 +52,9 @@
     line-height: 1;
 }
 
-.y-axis-title {
-    font-size: 11px;
-    color: #5a6a8a;
-    text-align: center;
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    margin-right: 2px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
 .graph-container {
-    flex: 1;
+    grid-column: 3;
+    grid-row: 1;
     aspect-ratio: 2.8 / 1;
     background: white;
     border: 1px solid #1a2240;
@@ -60,28 +70,33 @@
 }
 
 .x-axis-labels {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0 0 32px;
+    grid-column: 3;
+    grid-row: 2;
+    position: relative;
+    height: 18px;
 }
 
 .x-axis-labels .label {
+    position: absolute;
+    transform: translateX(-50%);
     font-size: 11px;
     color: #5a6a8a;
     text-align: center;
 }
 
 .x-axis-title {
+    grid-column: 3;
+    grid-row: 3;
     text-align: center;
     font-size: 11px;
     color: #5a6a8a;
     margin-top: 4px;
-    padding-left: 32px;
     letter-spacing: 1px;
     text-transform: uppercase;
 }
 
 .title-bar {
+    grid-column: 1 / -1;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -210,10 +225,6 @@
 .fold-btn.disabled {
     opacity: 0.4;
     cursor: not-allowed;
-}
-
-.graph-content {
-    background-color: white;
 }
 
 .axs-confirm-btn {
