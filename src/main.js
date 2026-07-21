@@ -638,6 +638,7 @@ function gatherProfileData(radarId, azimuth) {
     const terrainSlice = getTerrainSliceByAzimuth(radarId, azimuth);
 
     return {
+        radarId,
         profileData,
         azimuth,
         moment: moment,
@@ -736,6 +737,7 @@ function gatherRHIData(radarId, startAzimuth, endAzimuth, rangeKm) {
     const stationElevation = terrainData ? terrainData.terrainProfile[0] : 0;
 
     return {
+        radarId,
         profileData,
         startAzimuth,
         endAzimuth,
@@ -902,6 +904,7 @@ function gatherAXSData(pointA, pointB) {
     }
 
     return {
+        radarId: activeRadarId,
         samples,
         lineLengthKm,
         pointA,

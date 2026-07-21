@@ -44,6 +44,8 @@ let hasData = false;
 
 let hoverLocked = false;
 
+let currentRadarId = null;
+
 function initFoldButton() {
     const foldBtn = document.getElementById('foldBtn');
     if (!foldBtn) return;
@@ -1211,13 +1213,13 @@ container.addEventListener('mousemove', (e) => {
             const rangeKm = (mx / vb.w) * MAX_RANGE_KM;
             const t = Math.max(0, Math.min(1, rangeKm / MAX_RANGE_KM));
             document.dispatchEvent(new CustomEvent('profile-hover-position', {
-                detail: {t, mode: 'AHI'}
+                detail: { t, mode: 'AHI', radarId: currentRadarId }
             }));
         } else if (currentMode === 'AXS' && axsLineLengthKm > 0) {
             const distanceKm = (mx / vb.w) * axsLineLengthKm;
             const t = Math.max(0, Math.min(1, distanceKm / axsLineLengthKm));
             document.dispatchEvent(new CustomEvent('profile-hover-position', {
-                detail: {t, mode: 'AXS'}
+                detail: { t, mode: 'AXS', radarId: currentRadarId }
             }));
         } else if (currentMode === 'RHI') {
             const sliceWidth = rhiEndAzimuth >= rhiStartAzimuth
@@ -1225,7 +1227,7 @@ container.addEventListener('mousemove', (e) => {
                 : (360 - rhiStartAzimuth) + rhiEndAzimuth;
             const t = Math.max(0, Math.min(1, mx / vb.w));
             document.dispatchEvent(new CustomEvent('profile-hover-position', {
-                detail: {t, mode: 'RHI'}
+                detail: { t, mode: 'RHI', radarId: currentRadarId }
             }));
         }
     }
@@ -1249,6 +1251,8 @@ container.addEventListener('click', () => {
 // ─── Event Listeners ───
 document.addEventListener('profile-data-ready', (e) => {
     if (currentMode !== 'AHI') return;
+
+    currentRadarId = e.detail.radarId || null;
 
     const { profileData, azimuth, moment, units, palette, minValue, maxValue, terrain, terrainWidth } = e.detail;
 
@@ -1274,6 +1278,8 @@ document.addEventListener('profile-data-ready', (e) => {
 
 document.addEventListener('profile-rhi-data-ready', (e) => {
     if (currentMode !== 'RHI') return;
+
+    currentRadarId = e.detail.radarId || null;
 
     const { profileData, startAzimuth, endAzimuth, rangeKm, units, palette, minValue, maxValue, terrain,
         stationElevation } = e.detail;
@@ -1302,6 +1308,8 @@ document.addEventListener('profile-rhi-data-ready', (e) => {
 document.addEventListener('profile-axs-data-ready', (e) => {
     if (currentMode !== 'AXS') return;
 
+    currentRadarId = e.detail.radarId || null;
+
     hideLoadingScreen();
 
     const { samples, lineLengthKm, units, palette, minValue, maxValue } = e.detail;
@@ -1324,6 +1332,7 @@ document.addEventListener('profile-axs-data-ready', (e) => {
 });
 
 document.addEventListener('overlay-cleared', () => {
+    currentRadarId = null;
     currentProfileData = null;
     currentAXSData = null;
     currentPalette = null;

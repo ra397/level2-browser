@@ -15,8 +15,9 @@ export class Profile {
 
         this.hoverMarker = null;
         this._hoverListener = (e) => {
-            const { t, mode } = e.detail;
+            const { t, mode, radarId } = e.detail;
             if (mode !== this.#mode) return;
+            if (radarId !== this.radarId) return;
             this._updateHoverMarker(t);
         };
         document.addEventListener('profile-hover-position', this._hoverListener);
