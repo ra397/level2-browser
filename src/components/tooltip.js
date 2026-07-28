@@ -65,6 +65,11 @@ export function getTooltipOverlay() {
             }
         }
 
+        setPosition(position) {
+            this.#position = position;
+            this.draw();
+        }
+
         destroy() {
             this.setMap(null);
         }

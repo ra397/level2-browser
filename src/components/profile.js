@@ -1,3 +1,5 @@
+import { getTooltipOverlay } from './tooltip.js';
+
 export class Profile {
     #mode = 'AHI'; // 'AHI', 'RHI', or 'AXS'
     #rangeKm = 230; // For RHI mode
@@ -76,7 +78,10 @@ export class Profile {
             const constrainedPoint = this._constrainToCircle(dragPos.lat(), dragPos.lng(), this.maxDistance_m);
             this.dragMarker.setPosition(constrainedPoint);
             this._dispatchAzimuthChanged();
+            this._updateTooltip();
         });
+
+        this._createTooltip();
 
         this._dispatchAzimuthChanged();
     }
@@ -168,8 +173,11 @@ export class Profile {
             const rangeM = this.#rangeKm * 1000;
             const newPos = this._getEdgePoint(this.lat, this.lng, rangeM, midAzimuth);
             this.arcDragMarker.setPosition(newPos);
+            this._updateTooltip();
             this._dispatchRHIChanged();
         });
+
+        this._createTooltip();
 
         this._dispatchRHIChanged();
     }
@@ -249,6 +257,7 @@ export class Profile {
         });
 
         this.axsMarkerADragEndListener = this.axsMarkerA.addListener('dragend', () => {
+            this._updateTooltip();
             this._dispatchAXSLineUpdated();
         });
 
@@ -272,12 +281,16 @@ export class Profile {
             this.axsMarkerB.setPosition(newPos);
             this.#axsPointB = newPos;
             this.axsLine.setPath([this.#axsPointA, newPos]);
+            this._updateTooltip();
             this._dispatchAXSLineUpdated();
         });
 
         this.axsMarkerBDragEndListener = this.axsMarkerB.addListener('dragend', () => {
             this._dispatchAXSLineUpdated();
         });
+
+        // this._createTooltip();
+
         this._dispatchAXSLineUpdated();
     }
 
@@ -423,6 +436,9 @@ export class Profile {
         this.axsMarkerA = null;
         this.axsMarkerB = null;
         this.axsLine = null;
+
+        if (this.tooltip) this.tooltip.destroy();
+        this.tooltip = null;
     }
 
     setMode(mode) {
@@ -591,6 +607,44 @@ export class Profile {
         return { lat: edgePoint.lat(), lng: edgePoint.lng() };
     }
 
+    _tooltipText() {
+        if (this.#mode === 'AHI') {
+            return `${this.currentAzimuth.toFixed(1)}°`;
+        }
+        if (this.#mode === 'RHI') {
+            return `${this.currentAzimuth.toFixed(1)}° – ${this.getEndAzimuth().toFixed(1)}°`;
+        }
+        const heading = google.maps.geometry.spherical.computeHeading(
+            this.#axsPointA, this.#axsPointB
+        );
+        return `${((heading + 360) % 360).toFixed(1)}°`;
+    }
+
+    _tooltipAnchor() {
+        if (this.#mode === 'AHI') {
+            return this._getEdgePoint(this.lat, this.lng, this.maxDistance_m * 1.02, this.currentAzimuth);
+        }
+        if (this.#mode === 'RHI') {
+            const midAz = (this.currentAzimuth + this.#sliceWidth / 2) % 360;
+            return this._getEdgePoint(this.lat, this.lng, this.#rangeKm * 1000 * 1.1, midAz);
+        }
+        return this.axsMarkerB?.getPosition();
+    }
+
+    _createTooltip() {
+        const pos = this._tooltipAnchor();
+        if (!pos) return;
+        const Overlay = getTooltipOverlay();
+        this.tooltip = new Overlay(pos, this._tooltipText(), this.map, null);
+    }
+
+    _updateTooltip() {
+        if (!this.tooltip) return;
+        const pos = this._tooltipAnchor();
+        if (pos) this.tooltip.setPosition(pos);
+        this.tooltip.setContent(this._tooltipText());
+    }
+
     destroy() {
         this._clearMapObjects();
         this._removeHoverListener();
@@ -608,6 +662,7 @@ export class Profile {
         if (this.axsMarkerB) this.axsMarkerB.setMap(null);
         if (this.axsLine) this.axsLine.setMap(null);
         if (this.hoverMarker) this.hoverMarker.setMap(null);
+        if (this.tooltip) this.tooltip.hide();
     }
 
     show() {
@@ -622,5 +677,6 @@ export class Profile {
         if (this.axsMarkerB) this.axsMarkerB.setMap(this.map);
         if (this.axsLine) this.axsLine.setMap(this.map);
         if (this.hoverMarker) this.hoverMarker.setMap(this.map);
+        if (this.tooltip) this.tooltip.show();
     }
 }
