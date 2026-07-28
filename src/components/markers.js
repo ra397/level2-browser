@@ -1,5 +1,6 @@
 import {MarkerCollection} from "../displayer/markerCollection.js";
 import {mapReady} from "./map.js";
+import './nexradHover.js';
 
 // NEXRAD markers
 let nexradMarkers = null;
@@ -68,6 +69,32 @@ mapReady.then(() => {
             // If this radar is already loaded, set it as active
             document.dispatchEvent(new CustomEvent('radar-marker-clicked', {
                 detail: { radarId }
+            }));
+        });
+
+        // Handle marker hover
+        nexradMarkers.onHover((markerObj) => {
+            const radarId = markerObj.properties.id;
+            for (const station of stations) {
+                if (radarId === station.id) {
+                    document.dispatchEvent(new CustomEvent('radar-hover', {
+                        detail: {
+                            id: radarId,
+                            name: station.name,
+                            lat: station.lat,
+                            lng: station.lng,
+                        }
+                    }));
+                }
+            }
+        });
+
+        nexradMarkers.onHoverOut((markerObj) => {
+            const radarId = markerObj.properties.id;
+            document.dispatchEvent(new CustomEvent('radar-hover-out', {
+                detail: {
+                    id: markerObj.properties.id,
+                }
             }));
         });
     });

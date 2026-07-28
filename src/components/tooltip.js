@@ -2,7 +2,7 @@ import {latLngToRadarIndex} from "../displayer/radarGl.js";
 
 let TooltipOverlay = null;
 
-function getTooltipOverlay() {
+export function getTooltipOverlay() {
     if (TooltipOverlay) return TooltipOverlay;
 
     TooltipOverlay = class extends google.maps.OverlayView {

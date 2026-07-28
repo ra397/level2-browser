@@ -12,6 +12,8 @@ export class MarkerCollection {
 
         // Selection state (only used if selectable)
         this.clickHandler = null;
+        this.hoverHandler = null;
+        this.hoverOutHandler = null;
         this.selectedMarker = null;
         this.selectedColor = options.selectedColor ?? "#FFED29";
 
@@ -102,6 +104,14 @@ export class MarkerCollection {
             });
         }
 
+        marker.addListener('mouseover', () => {
+            if (this.hoverHandler) this.hoverHandler(markerObj);
+        });
+
+        marker.addListener('mouseout', () => {
+            if (this.hoverOutHandler) this.hoverOutHandler(markerObj);
+        });
+
         this.markers.push(markerObj);
         return markerObj;
     }
@@ -110,6 +120,14 @@ export class MarkerCollection {
     onClick(handler) {
         if (!this.selectable) return;
         this.clickHandler = handler;
+    }
+
+    onHover(handler) {
+        this.hoverHandler = handler;
+    }
+
+    onHoverOut(handler) {
+        this.hoverOutHandler = handler;
     }
 
     select(markerObj) {

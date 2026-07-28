@@ -844,3 +844,7 @@ body {
 .mrms-index-buttons .submit-btn {
     flex: 1;
 }
+
+.product-tooltip.hover-tooltip {
+    pointer-events: none;
+}
