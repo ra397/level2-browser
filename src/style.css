@@ -845,6 +845,7 @@ body {
     flex: 1;
 }
 
-.product-tooltip.hover-tooltip {
+.product-tooltip.tooltip-label {
     pointer-events: none;
+    transform: translate(-50%, -100%) translateY(-12px);
 }

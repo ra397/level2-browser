@@ -10,34 +10,39 @@ export function getTooltipOverlay() {
         #content;
         #div;
         #onClose;
+        #className;
 
-        constructor(position, content, map, onClose) {
+        constructor(position, content, map, onClose, className = null) {
             super();
             this.#position = position;
             this.#content = content;
             this.#div = null;
             this.#onClose = onClose;
+            this.#className = className;
             this.setMap(map);
         }
 
         onAdd() {
             this.#div = document.createElement('div');
             this.#div.className = 'product-tooltip';
+            if (this.#className) this.#div.classList.add(this.#className);
 
             const content = document.createElement('span');
             content.className = 'product-tooltip-content';
             content.textContent = this.#content;
-
-            const closeBtn = document.createElement('span');
-            closeBtn.className = 'product-tooltip-close';
-            closeBtn.textContent = '×';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.#onClose?.();
-            });
-
             this.#div.appendChild(content);
-            this.#div.appendChild(closeBtn);
+
+            if (this.#onClose) {
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'product-tooltip-close';
+                closeBtn.textContent = '×';
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.#onClose();
+                });
+                this.#div.appendChild(closeBtn);
+            }
+
             this.getPanes().floatPane.appendChild(this.#div);
         }
 
